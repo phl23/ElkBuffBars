@@ -430,6 +430,45 @@ function ElkBuffBars:PLAYER_ENTERING_WORLD()
 end
 
 local hidden_blizzard_frames = {}
+local hidden_blizzard_frame_hooks = {}
+
+local function EnsureHiddenFrameHook(frameName)
+    if hidden_blizzard_frame_hooks[frameName] then
+        return
+    end
+
+    local frame = _G[frameName]
+    if not frame or not frame.HookScript then
+        return
+    end
+
+    frame:HookScript("OnShow", function(self)
+        if hidden_blizzard_frames[frameName] then
+            self:Hide()
+        end
+    end)
+
+    hidden_blizzard_frame_hooks[frameName] = true
+end
+
+local function SetBlizzardFrameHidden(frameName, hide)
+    local frame = _G[frameName]
+    if not frame then
+        return nil
+    end
+
+    EnsureHiddenFrameHook(frameName)
+
+    if hide then
+        hidden_blizzard_frames[frameName] = true
+        frame:Hide()
+    else
+        hidden_blizzard_frames[frameName] = nil
+        frame:Show()
+    end
+
+    return frame
+end
 
 function ElkBuffBars:HandleFrame_Blizzard_BuffFrame(hide)
     if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
@@ -437,36 +476,49 @@ function ElkBuffBars:HandleFrame_Blizzard_BuffFrame(hide)
             -- BuffFrame:UnregisterEvent("WEAPON_ENCHANT_CHANGED");
             -- BuffFrame:UnregisterEvent("WEAPON_SLOT_CHANGED");
             -- BuffFrame:UnregisterEvent("UNIT_AURA")
-            BuffFrame:Hide()
-            hidden_blizzard_frames["BuffFrame"] = true
+            SetBlizzardFrameHidden("BuffFrame", true)
         elseif hidden_blizzard_frames["BuffFrame"] then
             -- BuffFrame:RegisterEvent("WEAPON_ENCHANT_CHANGED");
             -- BuffFrame:RegisterEvent("WEAPON_SLOT_CHANGED");
             -- BuffFrame:RegisterEvent("UNIT_AURA")
-            BuffFrame:Show()
-            BuffFrame:Update()
-            hidden_blizzard_frames["BuffFrame"] = nil
+            local frame = SetBlizzardFrameHidden("BuffFrame", false)
+            if frame and frame.Update then
+                frame:Update()
+            end
         end
         if hide then
             -- DebuffFrame:UnregisterEvent("UNIT_AURA")
-            DebuffFrame:Hide()
-            hidden_blizzard_frames["DebuffFrame"] = true
+            SetBlizzardFrameHidden("DebuffFrame", true)
         elseif hidden_blizzard_frames["DebuffFrame"] then
             -- DebuffFrame:RegisterEvent("UNIT_AURA")
-            DebuffFrame:Show()
-            DebuffFrame:Update()
-            hidden_blizzard_frames["DebuffFrame"] = nil
+            local frame = SetBlizzardFrameHidden("DebuffFrame", false)
+            if frame and frame.Update then
+                frame:Update()
+            end
         end
     else
         if hide then
-            BuffFrame:UnregisterEvent("UNIT_AURA")
-            BuffFrame:Hide()
-            hidden_blizzard_frames["BuffFrame"] = true
+            if BuffFrame and BuffFrame.UnregisterEvent then
+                BuffFrame:UnregisterEvent("UNIT_AURA")
+            end
+            SetBlizzardFrameHidden("BuffFrame", true)
+            SetBlizzardFrameHidden("DebuffFrame", true)
         elseif hidden_blizzard_frames["BuffFrame"] then
-            BuffFrame:RegisterEvent("UNIT_AURA")
-            BuffFrame:Show()
-            BuffFrame_Update()
-            hidden_blizzard_frames["BuffFrame"] = nil
+            if BuffFrame and BuffFrame.RegisterEvent then
+                BuffFrame:RegisterEvent("UNIT_AURA")
+            end
+            local frame = SetBlizzardFrameHidden("BuffFrame", false)
+            if frame and frame.Update then
+                frame:Update()
+            elseif BuffFrame_Update then
+                BuffFrame_Update()
+            end
+            if hidden_blizzard_frames["DebuffFrame"] then
+                local debuffFrame = SetBlizzardFrameHidden("DebuffFrame", false)
+                if debuffFrame and debuffFrame.Update then
+                    debuffFrame:Update()
+                end
+            end
         end
     end
 end
@@ -476,11 +528,9 @@ function ElkBuffBars:HandleFrame_Blizzard_TemporaryEnchantFrame(hide)
         return
     end
     if hide then
-        TemporaryEnchantFrame:Hide()
-        hidden_blizzard_frames["TemporaryEnchantFrame"] = true
+        SetBlizzardFrameHidden("TemporaryEnchantFrame", true)
     elseif hidden_blizzard_frames["TemporaryEnchantFrame"] then
-        TemporaryEnchantFrame:Show()
-        hidden_blizzard_frames["TemporaryEnchantFrame"] = nil
+        SetBlizzardFrameHidden("TemporaryEnchantFrame", false)
     end
 end
 
