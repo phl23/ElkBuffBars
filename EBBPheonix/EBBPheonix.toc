@@ -1,0 +1,36 @@
+## Interface: 11508, 11509, 40400, 110002, 110005, 20506
+
+## Title: EBB Phoenix
+## Notes: Modern Rewrite of Elkano's Buffbars. - EBB adds groups of bars to your screen showing you which (de)buffs currently affect your toon or some other units.
+## Notes-deDE: EBB fügt dem Interface Balkengruppen hinzu, welche die (De)Buffs anzeigen, die derzeit deine Spielfigur oder bestimmte andere Einheiten betreffen.
+## Notes-ruRU: EBB добавляет группы полос на экран, отображающие ваши текущие (де)баффы действующие на вас.
+## Notes-zhCN: EBB 以计时条群组在荧屏上显示你或其他单位的(减)增益状态
+## Notes-zhTW: EBB 以計時條群組在螢幕上顯示你或其他單位的(減)增益狀態
+
+## Author: phl23 / AI  Orignal by: Elkano
+## Version: 3.0.0
+## IconTexture: Interface\AddOns\ElkBuffBars\icon.tga
+
+## X-Category: Buffs
+## X-Website: https://github.com/phl23/EBBPheonix/
+
+## OptionalDeps: Ace3, AceGUI-3.0-SharedMediaWidgets, LibDBIcon-1.0, LibDualSpec-1.0, LibQTip-1.0, LibSharedMedia-3.0, UTF8
+
+## SavedVariables: ElkBuffBarsDB
+
+## Category: Buffs & Debuffs
+
+#@no-lib-strip@
+embeds.xml
+#@end-no-lib-strip@
+
+locales\ElkBuffBars.enUS.lua
+locales\ElkBuffBars.deDE.lua
+locales\ElkBuffBars.koKR.lua
+locales\ElkBuffBars.ruRU.lua
+locales\ElkBuffBars.zhCN.lua
+locales\ElkBuffBars.zhTW.lua
+
+ElkBuffBarsTBC.lua
+EBB_Bar.lua
+EBB_BarGroup.lua

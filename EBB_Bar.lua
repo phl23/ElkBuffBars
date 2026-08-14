@@ -18,6 +18,9 @@ local string_utf8len		= string.utf8len
 local prototype = {}
 local prototype_mt = {__index = prototype}
 
+local IsRetailClient = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+local IsClassicClient = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
+
 local DebuffTypeColor = _G.DebuffTypeColor or {
     none = { r = 0.5, g = 0.5, b = 0.5 },
     Magic = { r = 0.2, g = 0.6, b = 1.0 },
@@ -31,6 +34,15 @@ local function GetDebuffTypeColor(debuffType)
     local colorTable = DebuffTypeColor or _G.DebuffTypeColor or {}
     local selectedColor = colorTable[debuffType or "none"] or colorTable["none"] or { r = 0.5, g = 0.5, b = 0.5 }
     return selectedColor.r, selectedColor.g, selectedColor.b
+end
+
+local function GetClassColor(className)
+    local colorTable = _G.CUSTOM_CLASS_COLORS or _G.RAID_CLASS_COLORS or {}
+    local classColor = className and colorTable[className]
+    if not classColor then
+        return nil
+    end
+    return classColor.r, classColor.g, classColor.b
 end
 
 function ElkBuffBars:NewBar()
@@ -90,11 +102,11 @@ function prototype:OnClick(button)
                 end
             end
         elseif self.data.realtype == "TRACKING" then
-            if WOW_PROJECT_ID ~= WOW_PROJECT_CLASSIC then
+            if not IsClassicClient then
                 if GameTooltip:GetOwner() == self.frames.container then
                     GameTooltip:Hide()
                 end
-                if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
+                if IsRetailClient then
                     -- this breaks the original menu position :(
                     -- local anchor = AnchorUtil.CreateAnchor("TOPRIGHT", self.frames.container, "BOTTOMLEFT", 0, 0);
                     -- MinimapCluster.Tracking.Button:SetMenuAnchor(anchor)
@@ -131,9 +143,9 @@ function prototype:OnEnter()
             GameTooltip:SetUnitAura(self.parent.layout.target, self.data.id, "HARMFUL")
         end
         if (self.layout.tooltipcaster) then
-            local classColor = RAID_CLASS_COLORS[self.data.casterClass]
-            if classColor then
-                GameTooltip:AddDoubleLine(L["TOOLTIP_CASTER"], self.data.casterName, nil, nil, nil, classColor.r, classColor.g, classColor.b)
+            local classR, classG, classB = GetClassColor(self.data.casterClass)
+            if classR then
+                GameTooltip:AddDoubleLine(L["TOOLTIP_CASTER"], self.data.casterName, nil, nil, nil, classR, classG, classB)
             else
                 GameTooltip:AddDoubleLine(L["TOOLTIP_CASTER"], self.data.casterName)
             end
@@ -142,15 +154,15 @@ function prototype:OnEnter()
     elseif realtype == "TENCH" and self.parent.layout.target == "player" then
         GameTooltip:SetInventoryItem("player", self.data.id)
     elseif realtype == "TRACKING" and self.parent.layout.target == "player" then
-        if WOW_PROJECT_ID == WOW_PROJECT_CLASSIC then
+        if IsClassicClient then
             GameTooltip:SetTrackingSpell()
         else
             GameTooltip:ClearLines()
             GameTooltip:AddLine("Tracking")
-            local trackingData = WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE and {} or nil
+            local trackingData = not IsRetailClient and {} or nil
             local count = C_Minimap.GetNumTrackingTypes()
             for id = 1, count do
-                if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then -- return changed to struct in 11.0.0
+                if IsRetailClient then -- return changed to struct in 11.0.0
                     trackingData = C_Minimap.GetTrackingInfo(id)
                 else
                     trackingData.name, trackingData.texture, trackingData.active, trackingData.type = C_Minimap.GetTrackingInfo(id)
@@ -661,9 +673,9 @@ function prototype:GetDataString(datatype)
     if datatype == "TIMELEFT" then return string_format(self:GetTimeString(self.timeleft, self.layout.timeformat)) end
     if datatype == "DEBUFFTYPE" then return self.data.debufftype end
     if datatype == "CASTER" then
-        local classColor = RAID_CLASS_COLORS[self.data.casterClass]
-        if classColor then
-            return "|c"..classColor.colorStr..self.data.casterName.."|r"
+        local classR, classG, classB = GetClassColor(self.data.casterClass)
+        if classR then
+            return string_format("|cFF%02X%02X%02X%s|r", (classR * 255), (classG * 255), (classB * 255), self.data.casterName)
         else
             return self.data.casterName
         end

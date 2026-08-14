@@ -12,6 +12,12 @@ local LSM       = LibStub("LibSharedMedia-3.0")
 local LSM_font      = LSM:HashTable("font")
 local LSM_statusbar = LSM:HashTable("statusbar")
 
+local IsRetailClassic  = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+local IsClassic        = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
+local IsBurningCrusade = WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC
+local IsWrathClassic   = WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC
+local IsCataClassic    = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
+
 ------------------------------------------------------------------------
 -- Upvalues:
 
@@ -330,7 +336,7 @@ function ElkBuffBars:OnEnable()
     self.bucket_UNIT_PET = self:RegisterBucketEvent("UNIT_PET", .1)
     self.bucket_UNIT_AURA = self:RegisterBucketEvent("UNIT_AURA", .1)
 
-    if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
+    if IsRetailClassic then
         self:RegisterEvent("WEAPON_ENCHANT_CHANGED");
         self:RegisterEvent("WEAPON_SLOT_CHANGED");
     else
@@ -471,7 +477,7 @@ local function SetBlizzardFrameHidden(frameName, hide)
 end
 
 function ElkBuffBars:HandleFrame_Blizzard_BuffFrame(hide)
-    if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
+    if IsRetailClassic then
         if hide then
             -- BuffFrame:UnregisterEvent("WEAPON_ENCHANT_CHANGED");
             -- BuffFrame:UnregisterEvent("WEAPON_SLOT_CHANGED");
@@ -524,7 +530,7 @@ function ElkBuffBars:HandleFrame_Blizzard_BuffFrame(hide)
 end
 
 function ElkBuffBars:HandleFrame_Blizzard_TemporaryEnchantFrame(hide)
-    if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE or not TemporaryEnchantFrame then
+    if IsRetailClassic or not _G.TemporaryEnchantFrame then
         return
     end
     if hide then
@@ -534,7 +540,7 @@ function ElkBuffBars:HandleFrame_Blizzard_TemporaryEnchantFrame(hide)
     end
 end
 
-if WOW_PROJECT_ID == WOW_PROJECT_CLASSIC then
+if IsClassic then
     function ElkBuffBars:HandleFrame_Blizzard_MiniMapTracking(hide)
         if hide then
             MiniMapTracking:UnregisterEvent("MINIMAP_UPDATE_TRACKING")
@@ -550,7 +556,7 @@ if WOW_PROJECT_ID == WOW_PROJECT_CLASSIC then
             hidden_blizzard_frames["MiniMapTracking"] = nil
         end
     end
-elseif WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC then
+elseif IsBurningCrusade then
     function ElkBuffBars:HandleFrame_Blizzard_MiniMapTracking(hide)
         if hide then
             MiniMapTracking:Hide()
@@ -560,7 +566,7 @@ elseif WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC then
             hidden_blizzard_frames["MiniMapTracking"] = nil
         end
     end
-elseif WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC or WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC then
+elseif IsWrathClassic or IsCataClassic then
     function ElkBuffBars:HandleFrame_Blizzard_MiniMapTracking(hide)
         if hide then
     --~ 		MiniMapTracking:UnregisterEvent("MINIMAP_UPDATE_TRACKING")
@@ -652,7 +658,7 @@ local cache_SAB = {}
 
 local SAB_OnLeftClick = function(self, unit, button) local bar = self:GetAttribute("_bar"); bar.OnClick(bar, button) end
 local SAB_OnRightClickTracking = function(self, unit, button)
-    if WOW_PROJECT_ID == WOW_PROJECT_CLASSIC then
+    if IsClassic then
         CancelTrackingBuff()
     end
 end
@@ -664,7 +670,7 @@ function ElkBuffBars:GetSAB()
         return table_remove(cache_SAB, #cache_SAB)
     else
         local button = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
-        if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
+        if IsRetailClassic then
             -- we need either up or down based on CVar ActionButtonUseKeyDown
             button:RegisterForClicks("LeftButtonDown", "LeftButtonUp", "RightButtonDown", "RightButtonUp")
         else
@@ -1309,7 +1315,7 @@ local function getTooltipScanner()
         return tooltipScanner
     end
 
-    if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
+    if IsRetailClassic then
         tooltipScanner = {}
 
         function tooltipScanner:GetEnchantNameForPlayerSlot(slot)
@@ -1553,9 +1559,9 @@ function ElkBuffBars:GetOptions()
                         width = "full",
                         name = L["OPTIONS_HIDEBLIZZARDTRACKING_NAME"],
                         desc = L["OPTIONS_HIDEBLIZZARDTRACKING_DESC"],
-                        disabled = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE,
+                        disabled = IsRetailClassic,
                         get = function(info)
-                            if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then return false end
+                            if IsRetailClassic then return false end
                             return ElkBuffBars.db.profile.hidetrackingframe
                         end,
                         set = function(info, v)
