@@ -18,6 +18,21 @@ local string_utf8len		= string.utf8len
 local prototype = {}
 local prototype_mt = {__index = prototype}
 
+local DebuffTypeColor = _G.DebuffTypeColor or {
+    none = { r = 0.5, g = 0.5, b = 0.5 },
+    Magic = { r = 0.2, g = 0.6, b = 1.0 },
+    Curse = { r = 0.6, g = 0.4, b = 1.0 },
+    Disease = { r = 0.6, g = 0.6, b = 0.0 },
+    Poison = { r = 0.0, g = 0.6, b = 0.0 },
+}
+_G.DebuffTypeColor = DebuffTypeColor
+
+local function GetDebuffTypeColor(debuffType)
+    local colorTable = DebuffTypeColor or _G.DebuffTypeColor or {}
+    local selectedColor = colorTable[debuffType or "none"] or colorTable["none"] or { r = 0.5, g = 0.5, b = 0.5 }
+    return selectedColor.r, selectedColor.g, selectedColor.b
+end
+
 function ElkBuffBars:NewBar()
     local bar = setmetatable({}, prototype_mt)
     bar.frames = {}
@@ -482,8 +497,8 @@ function prototype:UpdateData(data)
         elseif data.type == "DEBUFF" then
             frames.iconborder:SetTexture("Interface\\Buttons\\UI-Debuff-Overlays")
             frames.iconborder:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)
-            local debuffcolor = DebuffTypeColor[data.debufftype or "none"] or DebuffTypeColor["none"]
-            frames.iconborder:SetVertexColor(debuffcolor.r, debuffcolor.g, debuffcolor.b)
+            local r, g, b = GetDebuffTypeColor(data.debufftype)
+            frames.iconborder:SetVertexColor(r, g, b)
             frames.iconborder:SetBlendMode("BLEND")
             frames.iconborder:Show()
         elseif data.type == "TENCH" then
@@ -541,8 +556,7 @@ function prototype:UpdateData(data)
         end
         local barcolorR, barcolorG, barcolorB, barcolorA = unpack(layout["barcolor"])
         if data.type == "DEBUFF" and layout.debufftypecolor then
-            local debuffcolor = DebuffTypeColor[data.debufftype or "none"] or DebuffTypeColor["none"]
-            barcolorR, barcolorG, barcolorB = debuffcolor.r, debuffcolor.g, debuffcolor.b
+            barcolorR, barcolorG, barcolorB = GetDebuffTypeColor(data.debufftype)
         end
         frames.bar:SetVertexColor(barcolorR, barcolorG, barcolorB, barcolorA)
     end
