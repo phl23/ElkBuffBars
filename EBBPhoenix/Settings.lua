@@ -8,6 +8,11 @@ addon.defaults = {
             lock = false,
         },
         locked = false,
+        barTexture = "You Are The Best!",
+        font = "Aldrich",
+        fontShadow = true,
+        hideBlizzardBuffs = false,
+        hideBlizzardDebuffs = false,
         groups = {
             {
                 id = 1,
@@ -19,7 +24,6 @@ addon.defaults = {
                 anchor = { "TOPLEFT", nil, "TOPLEFT", 20, -60 },
                 grow = "DOWN",
                 enabled = true,
-                maxBars = 16,
                 sort = "EXPIRATION",
                 onlyMine = false,
                 hidePermanent = false,
@@ -36,7 +40,6 @@ addon.defaults = {
                 anchor = { "TOPLEFT", nil, "TOPLEFT", 20, -310 },
                 grow = "DOWN",
                 enabled = true,
-                maxBars = 16,
                 sort = "EXPIRATION",
                 onlyMine = false,
                 hidePermanent = false,
@@ -55,7 +58,7 @@ addon.defaults = {
                 enabled = true,
                 maxBars = 16,
                 sort = "EXPIRATION",
-                onlyMine = false,
+                onlyMine = true,
                 hidePermanent = false,
                 icon = true,
                 text = true,
@@ -72,7 +75,7 @@ addon.defaults = {
                 enabled = true,
                 maxBars = 16,
                 sort = "EXPIRATION",
-                onlyMine = false,
+                onlyMine = true,
                 hidePermanent = false,
                 icon = true,
                 text = true,
@@ -96,6 +99,10 @@ function addon:ApplyProfileDefaults()
         end
     end
 
+    if self.db.profile.barTexture == "Luna Minimalist" then
+        self.db.profile.barTexture = self.defaults.profile.barTexture
+    end
+
     if type(self.db.profile.groups) ~= "table" or #self.db.profile.groups == 0 then
         self.db.profile.groups = CopyTable(self.defaults.profile.groups)
     end
@@ -107,8 +114,10 @@ function addon:ApplyProfileDefaults()
         if group.enabled == nil then
             group.enabled = true
         end
-        if group.maxBars == nil then
+        if group.unit == "target" and group.maxBars == nil then
             group.maxBars = 16
+        elseif group.unit ~= "target" then
+            group.maxBars = nil
         end
         if group.sort == nil then
             group.sort = "EXPIRATION"
@@ -131,7 +140,7 @@ function addon:ApplyProfileDefaults()
         end
     end
 
-    if self.db.profile.layoutVersion ~= 2 then
+    if (self.db.profile.layoutVersion or 0) < 2 then
         for index, defaultGroup in ipairs(self.defaults.profile.groups) do
             local group = self.db.profile.groups[index]
             if group then
@@ -139,8 +148,9 @@ function addon:ApplyProfileDefaults()
                 group.grow = defaultGroup.grow
             end
         end
-        self.db.profile.layoutVersion = 2
     end
+
+    self.db.profile.layoutVersion = 3
 end
 
 function addon:LoadSavedVariables()
@@ -162,7 +172,6 @@ function addon:AddGroup(groupConfig)
         anchor = { "TOPLEFT", nil, "TOPLEFT", 20, -60 },
         grow = "DOWN",
         enabled = true,
-        maxBars = 16,
         icon = true,
         text = true,
     }
@@ -193,9 +202,41 @@ function addon:SetAllGroupsField(field, value)
     self:RefreshAll()
 end
 
-function addon:SetAllGroupsMaxBars(value)
-    local maxBars = math.max(1, math.min(40, value))
-    self:SetAllGroupsField("maxBars", maxBars)
+function addon:SetBarsLocked(locked)
+    self.db.profile.locked = locked == true
+    self:RefreshAll()
+end
+
+function addon:SetGroupGrow(groupId, grow)
+    local group = self.db.profile.groups[groupId]
+    if not group then
+        return
+    end
+
+    group.grow = grow == "UP" and "UP" or "DOWN"
+    self:BuildGroups()
+    self:RefreshAll()
+end
+
+function addon:SetGroupChain(groupId, parentId)
+    local group = self.db.profile.groups[groupId]
+    if not group then
+        return
+    end
+
+    group.anchorTo = parentId or nil
+    self:BuildGroups()
+    self:RefreshAll()
+end
+
+function addon:SetTargetGroupMaxBars(groupId, value)
+    local group = self.db.profile.groups[groupId]
+    if not group or group.unit ~= "target" then
+        return
+    end
+
+    group.maxBars = math.max(1, math.min(40, value))
+    self:RefreshAll()
 end
 
 function addon:AdjustGroupField(groupId, field, delta, minimum, maximum)

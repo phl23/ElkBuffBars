@@ -17,7 +17,7 @@ function Layout:CreateGroup(groupConfig)
         anchor = groupConfig.anchor or { "TOPLEFT", UIParent, "TOPLEFT", 20, -60 },
         grow = groupConfig.grow or "DOWN",
         visible = groupConfig.enabled ~= false,
-        maxBars = groupConfig.maxBars or 16,
+        maxBars = groupConfig.maxBars,
         config = groupConfig,
         bars = {},
         frame = CreateFrame("Frame", nil, UIParent),
@@ -41,6 +41,7 @@ function Layout:CreateGroup(groupConfig)
     group.frame:RegisterForDrag("LeftButton")
     group.frame:SetScript("OnDragStart", function(frame)
         if addon.db and addon.db.profile and not addon.db.profile.locked then
+            group.config.anchorTo = nil
             frame:StartMoving()
         end
     end)
@@ -63,31 +64,31 @@ function Layout:CreateBar(parent)
     bar:ClearAllPoints()
     bar:Show()
 
+    if not bar.fill then
+        bar.fill = CreateFrame("StatusBar", nil, bar)
+        bar.fill:SetAllPoints(bar)
+        bar.fill:SetFrameLevel(bar:GetFrameLevel())
+        bar.fill:SetMinMaxValues(0, 1)
+        bar.fill:SetValue(1)
+        bar.fill:SetStatusBarTexture(addon.Media:GetBarTexture())
+    end
+
     if not bar.icon then
-        bar.icon = bar:CreateTexture(nil, "ARTWORK")
-        bar.icon:SetSize(16, 16)
-        bar.icon:SetPoint("LEFT", bar, "LEFT", 2, 0)
+        bar.icon = bar.fill:CreateTexture(nil, "OVERLAY")
     end
 
     if not bar.text then
-        bar.text = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        bar.text:SetPoint("LEFT", bar.icon, "RIGHT", 4, 0)
+        bar.text = bar.fill:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         bar.text:SetJustifyH("LEFT")
     end
 
     if not bar.duration then
-        bar.duration = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        bar.duration:SetPoint("RIGHT", bar, "RIGHT", -2, 0)
+        bar.duration = bar.fill:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         bar.duration:SetJustifyH("RIGHT")
-        bar.text:SetPoint("RIGHT", bar.duration, "LEFT", -6, 0)
     end
 
-    if not bar.fill then
-        bar.fill = bar:CreateTexture(nil, "BACKGROUND")
-        bar.fill:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
-        bar.fill:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
-        bar.fill:SetDrawLayer("BACKGROUND", 1)
-    end
+    self:UpdateBarLayout(bar)
+    self:ApplyBarFont(bar)
 
     if not bar.background then
         bar.background = bar:CreateTexture(nil, "BACKGROUND")
@@ -102,17 +103,54 @@ function Layout:CreateBar(parent)
     end)
     bar:SetScript("OnEnter", function(currentBar)
         local aura = currentBar.aura
-        if not aura or not aura.index or not GameTooltip or not GameTooltip.SetUnitAura then
+        if not aura or not GameTooltip then
             return
         end
 
         GameTooltip:SetOwner(currentBar, "ANCHOR_RIGHT")
-        GameTooltip:SetUnitAura(currentBar.group.unit, aura.index, currentBar.group.filter)
+        if aura.isDummy then
+            GameTooltip:SetText(currentBar.group.name)
+            GameTooltip:AddLine("Drag to move this group", 1, 1, 1)
+            GameTooltip:AddLine("Shift+Click to lock again", 1, 0.82, 0)
+        elseif aura.index and GameTooltip.SetUnitAura then
+            GameTooltip:SetUnitAura(currentBar.group.unit, aura.index, currentBar.group.filter)
+            if addon.db and addon.db.profile and not addon.db.profile.locked then
+                GameTooltip:AddLine("Shift+Click to lock again", 1, 0.82, 0)
+            end
+        else
+            return
+        end
         GameTooltip:Show()
     end)
     bar:SetScript("OnLeave", function()
         if GameTooltip then
             GameTooltip:Hide()
+        end
+    end)
+    bar:SetScript("OnMouseDown", function(currentBar, button)
+        if button ~= "LeftButton" or IsShiftKeyDown() then
+            return
+        end
+
+        if addon.db and addon.db.profile and not addon.db.profile.locked then
+            currentBar.group.config.anchorTo = nil
+            currentBar.group.frame:StartMoving()
+            currentBar.draggingGroup = true
+        end
+    end)
+    bar:SetScript("OnMouseUp", function(currentBar)
+        if not currentBar.draggingGroup then
+            return
+        end
+
+        currentBar.group.frame:StopMovingOrSizing()
+        local point, _, relativePoint, x, y = currentBar.group.frame:GetPoint(1)
+        currentBar.group.config.anchor = { point, nil, relativePoint, x, y }
+        currentBar.draggingGroup = false
+    end)
+    bar:SetScript("OnClick", function(_, button)
+        if button == "LeftButton" and IsShiftKeyDown() then
+            addon:SetBarsLocked(true)
         end
     end)
 
@@ -139,7 +177,7 @@ function Layout:RefreshGroup(group, auraList)
 
     local visibleAuras = auraList or {}
     local bars = group.bars
-    local visibleCount = math.min(#visibleAuras, group.maxBars)
+    local visibleCount = group.maxBars and math.min(#visibleAuras, group.maxBars) or #visibleAuras
 
     for index = #bars + 1, visibleCount do
         local bar = self:CreateBar(group)
@@ -171,16 +209,56 @@ function Layout:RefreshGroup(group, auraList)
             end
         end
         bar:SetSize(group.width, group.height)
+        self:UpdateBarLayout(bar)
         bar:Show()
     end
 
     group.frame:SetHeight(math.max(group.height, (visibleCount * group.height) + math.max(0, visibleCount - 1) * 4))
 end
 
+function Layout:UpdateBarLayout(bar)
+    if not bar.icon or not bar.text or not bar.duration then
+        return
+    end
+
+    local iconSize = math.max(12, math.min(24, bar:GetHeight() - 4))
+    bar.icon:SetSize(iconSize, iconSize)
+    bar.icon:ClearAllPoints()
+    bar.icon:SetPoint("LEFT", bar.fill, "LEFT", 4, 0)
+
+    bar.duration:ClearAllPoints()
+    bar.duration:SetPoint("RIGHT", bar.fill, "RIGHT", -6, 0)
+    bar.text:ClearAllPoints()
+    bar.text:SetPoint("LEFT", bar.icon, "RIGHT", 6, 0)
+    bar.text:SetPoint("RIGHT", bar.duration, "LEFT", -8, 0)
+end
+
+function Layout:UpdateChainedAnchors()
+    for _, group in pairs(addon.state.groups) do
+        local parentId = group.config.anchorTo
+        local parent = parentId and addon.state.groups[parentId]
+        if parent and parent ~= group and parent.frame then
+            local parentBars = parent.bars
+            local terminalBar = parentBars[#parentBars]
+            group.frame:ClearAllPoints()
+
+            if parent.grow == "UP" then
+                local anchorFrame = terminalBar or parent.frame
+                group.frame:SetPoint("TOPLEFT", anchorFrame, "TOPLEFT", 0, group.height + 4)
+            else
+                local anchorFrame = terminalBar or parent.frame
+                group.frame:SetPoint("TOPLEFT", anchorFrame, "BOTTOMLEFT", 0, -4)
+            end
+        end
+    end
+end
+
 function Layout:ApplyAuraToBar(bar, aura)
     if not bar or not aura then
         return
     end
+
+    self:ApplyBarFont(bar)
 
     if bar.group.icon and aura.icon then
         bar.icon:SetTexture(aura.icon)
@@ -200,11 +278,40 @@ function Layout:ApplyAuraToBar(bar, aura)
     bar.aura = aura
     self:UpdateBarDuration(bar)
 
+    if aura.isDummy then
+        bar.fill:SetStatusBarTexture(addon.Media:GetBarTexture())
+        bar.fill:SetStatusBarColor(0.75, 0.55, 0.08, 0.8)
+        bar.duration:SetText("")
+        bar.fill:SetValue(1)
+        return
+    end
+
     local r, g, b = addon.Compat:GetDebuffColor(aura.debuffType)
+    bar.fill:SetStatusBarTexture(addon.Media:GetBarTexture())
     if aura.type == "DEBUFF" then
-        bar.fill:SetColorTexture(r, g, b, 0.75)
+        bar.fill:SetStatusBarColor(r, g, b, 0.75)
     else
-        bar.fill:SetColorTexture(0.2, 0.6, 1.0, 0.7)
+        bar.fill:SetStatusBarColor(0.2, 0.6, 1.0, 0.7)
+    end
+end
+
+function Layout:ApplyBarFont(bar)
+    if not bar.text or not bar.duration then
+        return
+    end
+
+    local fontPath = addon.Media:GetBarFont()
+    bar.text:SetFont(fontPath, 11, "")
+    bar.duration:SetFont(fontPath, 11, "")
+
+    if addon.db and addon.db.profile and addon.db.profile.fontShadow ~= false then
+        bar.text:SetShadowColor(0, 0, 0, 1)
+        bar.duration:SetShadowColor(0, 0, 0, 1)
+        bar.text:SetShadowOffset(1, -1)
+        bar.duration:SetShadowOffset(1, -1)
+    else
+        bar.text:SetShadowOffset(0, 0)
+        bar.duration:SetShadowOffset(0, 0)
     end
 end
 
@@ -216,18 +323,19 @@ function Layout:UpdateBarDuration(bar)
 
     if not aura.duration or aura.duration <= 0 or not aura.expiresAt or aura.expiresAt <= 0 then
         bar.duration:SetText("")
-        bar.fill:SetWidth(bar:GetWidth())
+        bar.fill:SetValue(1)
         return
     end
 
     local remaining = math.max(0, aura.expiresAt - GetTime())
     if remaining <= 0 then
         bar.duration:SetText("")
+        bar.fill:SetValue(0)
         return
     end
 
     bar.duration:SetText(string.format("%.0f", remaining))
-    bar.fill:SetWidth(math.max(1, bar:GetWidth() * (remaining / aura.duration)))
+    bar.fill:SetValue(remaining / aura.duration)
 end
 
 addon.Layout = Layout

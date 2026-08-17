@@ -24,6 +24,8 @@ function Main:RefreshAll()
             self:RefreshGroup(actualGroup)
         end
     end
+
+    addon.Layout:UpdateChainedAnchors()
 end
 
 function Main:RefreshUnit(unitToken)
@@ -36,6 +38,8 @@ function Main:RefreshUnit(unitToken)
             self:RefreshGroup(group)
         end
     end
+
+    addon.Layout:UpdateChainedAnchors()
 end
 
 addon.Main = Main

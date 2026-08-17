@@ -4,6 +4,25 @@ addon.Options = addon.Options or {}
 
 local Options = addon.Options
 
+local function createSettingsPanel()
+    local panel = CreateFrame("Frame", "EBBPhoenixSettingsCategory", UIParent)
+    panel:SetSize(520, 180)
+
+    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("EBB Phoenix")
+
+    local openButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    openButton:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -20)
+    openButton:SetSize(200, 26)
+    openButton:SetText("Open EBB Phoenix")
+    openButton:SetScript("OnClick", function()
+        addon.Options:Open()
+    end)
+
+    return panel
+end
+
 local function createCheckbox(parent, label, getter, setter, anchor, relativeTo)
     local button = CreateFrame("Button", nil, parent)
     button:SetSize(20, 20)
@@ -59,6 +78,10 @@ local function createStepper(parent, label, getter, setter, anchor, relativeTo, 
     increase:SetSize(24, 20)
 
     local control = {}
+    control.caption = caption
+    control.value = value
+    control.decrease = decrease
+    control.increase = increase
     function control:Refresh()
         value:SetText(tostring(getter()))
     end
@@ -72,14 +95,30 @@ local function createStepper(parent, label, getter, setter, anchor, relativeTo, 
         control:Refresh()
     end)
     control:Refresh()
+    function control:SetShown(shown)
+        if shown then
+            caption:Show()
+            value:Show()
+            decrease:Show()
+            increase:Show()
+        else
+            caption:Hide()
+            value:Hide()
+            decrease:Hide()
+            increase:Hide()
+        end
+    end
     return control
 end
 
 local function buildPanel()
     local panel = CreateFrame("Frame", "EBBPhoenixOptionsPanel", UIParent)
+    panel:SetWidth(400)
+    panel:SetHeight(640)
+    local content = panel
+    UISpecialFrames = UISpecialFrames or {}
+    table.insert(UISpecialFrames, "EBBPhoenixOptionsPanel")
     panel.name = "EBB Phoenix"
-    panel:SetWidth(320)
-    panel:SetHeight(700)
     panel:SetFrameStrata("DIALOG")
     panel:Hide()
     panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
@@ -103,15 +142,15 @@ local function buildPanel()
     inner:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -2, 2)
     inner:SetColorTexture(0.03, 0.03, 0.03, 0.96)
 
-    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    local title = content:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 16, -16)
     title:SetText("EBB Phoenix")
 
-    local subtitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local subtitle = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
     subtitle:SetText("Modern buff and debuff bar groups")
 
-    local refreshButton = CreateFrame("Button", "EBBPhoenixRefreshButton", panel, "UIPanelButtonTemplate")
+    local refreshButton = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     refreshButton:SetText("Refresh")
     refreshButton:SetPoint("TOPLEFT", subtitle, "BOTTOMLEFT", 0, -20)
     refreshButton:SetSize(120, 24)
@@ -119,105 +158,114 @@ local function buildPanel()
         addon:RefreshAll()
     end)
 
-    local minimapToggle = createCheckbox(panel, "Show minimap button", function()
+    local globalControls = {}
+
+    local minimapToggle = createCheckbox(content, "Show minimap button", function()
         return not addon.db.profile.minimap.hide
     end, function(value)
         addon.db.profile.minimap.hide = not value
         addon.Minimap:Refresh()
     end, "TOPLEFT", refreshButton)
     minimapToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -20)
+    table.insert(globalControls, minimapToggle)
 
-    local buffGroup = addon.db.profile.groups[1]
-    local buffToggle = createCheckbox(panel, "Show player buffs", function()
-        return buffGroup and buffGroup.enabled ~= false
-    end, function(value)
-        buffGroup.enabled = value
-        addon:BuildGroups()
-        addon:RefreshAll()
-    end, "TOPLEFT", refreshButton)
-    buffToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -48)
-
-    local debuffGroup = addon.db.profile.groups[2]
-    local debuffToggle = createCheckbox(panel, "Show player debuffs", function()
-        return debuffGroup and debuffGroup.enabled ~= false
-    end, function(value)
-        debuffGroup.enabled = value
-        addon:BuildGroups()
-        addon:RefreshAll()
-    end, "TOPLEFT", refreshButton)
-    debuffToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -76)
-
-    local targetBuffGroup = addon.db.profile.groups[3]
-    local targetBuffToggle = createCheckbox(panel, "Show target buffs", function()
-        return targetBuffGroup and targetBuffGroup.enabled ~= false
-    end, function(value)
-        targetBuffGroup.enabled = value
-        addon:BuildGroups()
-        addon:RefreshAll()
-    end, "TOPLEFT", refreshButton)
-    targetBuffToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -104)
-
-    local targetDebuffGroup = addon.db.profile.groups[4]
-    local targetDebuffToggle = createCheckbox(panel, "Show target debuffs", function()
-        return targetDebuffGroup and targetDebuffGroup.enabled ~= false
-    end, function(value)
-        targetDebuffGroup.enabled = value
-        addon:BuildGroups()
-        addon:RefreshAll()
-    end, "TOPLEFT", refreshButton)
-    targetDebuffToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -132)
-
-    local lockToggle = createCheckbox(panel, "Lock bar positions", function()
+    local lockToggle = createCheckbox(content, "Lock bar positions", function()
         return addon.db.profile.locked == true
     end, function(value)
-        addon.db.profile.locked = value
+        addon:SetBarsLocked(value)
     end, "TOPLEFT", refreshButton)
-    lockToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -168)
+    lockToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -48)
+    table.insert(globalControls, lockToggle)
 
-    local iconsToggle = createCheckbox(panel, "Show icons", function()
+    local iconsToggle = createCheckbox(content, "Show icons", function()
         return addon.db.profile.groups[1].icon ~= false
     end, function(value)
         addon:SetAllGroupsField("icon", value)
     end, "TOPLEFT", refreshButton)
-    iconsToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -196)
+    iconsToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -76)
+    table.insert(globalControls, iconsToggle)
 
-    local namesToggle = createCheckbox(panel, "Show aura names", function()
+    local namesToggle = createCheckbox(content, "Show aura names", function()
         return addon.db.profile.groups[1].text ~= false
     end, function(value)
         addon:SetAllGroupsField("text", value)
     end, "TOPLEFT", refreshButton)
-    namesToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -228)
+    namesToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -104)
+    table.insert(globalControls, namesToggle)
 
-    local maxBarsControl = createStepper(panel, "Max bars", function()
-        return addon.db.profile.groups[1].maxBars or 16
+    local fontButton = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    fontButton:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -132)
+    fontButton:SetSize(250, 24)
+    function fontButton:Refresh()
+        self:SetText("Font: " .. (addon.db.profile.font or addon.Media.defaultFont))
+    end
+    fontButton:SetScript("OnClick", function()
+        local fonts = addon.Media:GetFontNames()
+        local currentFont = addon.db.profile.font or addon.Media.defaultFont
+        local selectedIndex = 1
+        for index, fontName in ipairs(fonts) do
+            if fontName == currentFont then
+                selectedIndex = index
+                break
+            end
+        end
+        addon.db.profile.font = fonts[(selectedIndex % #fonts) + 1]
+        addon:RefreshAll()
+        fontButton:Refresh()
+    end)
+    fontButton:Refresh()
+    table.insert(globalControls, fontButton)
+
+    local fontShadowToggle = createCheckbox(content, "Font shadow", function()
+        return addon.db.profile.fontShadow ~= false
     end, function(value)
-        addon:SetAllGroupsMaxBars(value)
-    end, "TOPLEFT", refreshButton, -260)
-    maxBarsControl:Refresh()
+        addon.db.profile.fontShadow = value
+        addon:RefreshAll()
+    end, "TOPLEFT", refreshButton)
+    fontShadowToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -160)
+    table.insert(globalControls, fontShadowToggle)
 
-    local resetButton = CreateFrame("Button", "EBBPhoenixResetButton", panel, "UIPanelButtonTemplate")
+    local hideBlizzardBuffsToggle = createCheckbox(content, "Hide Blizzard buffs", function()
+        return addon.db.profile.hideBlizzardBuffs == true
+    end, function(value)
+        addon.db.profile.hideBlizzardBuffs = value
+        addon:ApplyBlizzardAuraVisibility()
+    end, "TOPLEFT", refreshButton)
+    hideBlizzardBuffsToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -188)
+    table.insert(globalControls, hideBlizzardBuffsToggle)
+
+    local hideBlizzardDebuffsToggle = createCheckbox(content, "Hide Blizzard debuffs", function()
+        return addon.db.profile.hideBlizzardDebuffs == true
+    end, function(value)
+        addon.db.profile.hideBlizzardDebuffs = value
+        addon:ApplyBlizzardAuraVisibility()
+    end, "TOPLEFT", refreshButton)
+    hideBlizzardDebuffsToggle:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -216)
+    table.insert(globalControls, hideBlizzardDebuffsToggle)
+
+    local resetButton = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     resetButton:SetText("Reset Positions")
-    resetButton:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -296)
+    resetButton:SetPoint("TOPLEFT", refreshButton, "BOTTOMLEFT", 0, -252)
     resetButton:SetSize(120, 24)
     resetButton:SetScript("OnClick", function()
         addon:ResetPositions()
     end)
 
-    local divider = panel:CreateTexture(nil, "ARTWORK")
+    local divider = content:CreateTexture(nil, "ARTWORK")
     divider:SetPoint("TOPLEFT", resetButton, "BOTTOMLEFT", 0, -18)
-    divider:SetSize(288, 1)
+    divider:SetSize(368, 1)
     divider:SetColorTexture(0.55, 0.4, 0.08, 1)
 
     local activeGroupIndex = 1
-    local groupTitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local groupTitle = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     groupTitle:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 0, -14)
 
-    local previousGroup = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local previousGroup = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     previousGroup:SetText("<")
     previousGroup:SetPoint("LEFT", groupTitle, "RIGHT", 10, 0)
     previousGroup:SetSize(24, 20)
 
-    local nextGroup = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local nextGroup = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     nextGroup:SetText(">")
     nextGroup:SetPoint("LEFT", previousGroup, "RIGHT", 4, 0)
     nextGroup:SetSize(24, 20)
@@ -235,7 +283,7 @@ local function buildPanel()
         end
     end
 
-    local groupEnabled = createCheckbox(panel, "Enable this group", function()
+    local groupEnabled = createCheckbox(content, "Enable this group", function()
         local group = activeGroup()
         return group and group.enabled ~= false
     end, function(value)
@@ -247,7 +295,7 @@ local function buildPanel()
     groupEnabled:SetPoint("TOPLEFT", groupTitle, "BOTTOMLEFT", 0, -16)
     table.insert(groupControls, groupEnabled)
 
-    local onlyMineToggle = createCheckbox(panel, "Only my auras", function()
+    local onlyMineToggle = createCheckbox(content, "Only my auras", function()
         return activeGroup().onlyMine == true
     end, function(value)
         activeGroup().onlyMine = value
@@ -256,7 +304,7 @@ local function buildPanel()
     onlyMineToggle:SetPoint("TOPLEFT", groupEnabled, "BOTTOMLEFT", 0, -28)
     table.insert(groupControls, onlyMineToggle)
 
-    local permanentToggle = createCheckbox(panel, "Hide permanent auras", function()
+    local permanentToggle = createCheckbox(content, "Hide permanent auras", function()
         return activeGroup().hidePermanent == true
     end, function(value)
         activeGroup().hidePermanent = value
@@ -265,7 +313,7 @@ local function buildPanel()
     permanentToggle:SetPoint("TOPLEFT", groupEnabled, "BOTTOMLEFT", 0, -56)
     table.insert(groupControls, permanentToggle)
 
-    local widthControl = createStepper(panel, "Bar width", function()
+    local widthControl = createStepper(content, "Bar width", function()
         return activeGroup().width or 220
     end, function(value)
         local group = activeGroup()
@@ -275,7 +323,7 @@ local function buildPanel()
     end, "TOPLEFT", groupEnabled, -90)
     table.insert(groupControls, widthControl)
 
-    local heightControl = createStepper(panel, "Bar height", function()
+    local heightControl = createStepper(content, "Bar height", function()
         return activeGroup().height or 18
     end, function(value)
         local group = activeGroup()
@@ -285,9 +333,22 @@ local function buildPanel()
     end, "TOPLEFT", groupEnabled, -116)
     table.insert(groupControls, heightControl)
 
-    local sortButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    sortButton:SetPoint("TOPLEFT", groupEnabled, "BOTTOMLEFT", 0, -150)
-    sortButton:SetSize(180, 24)
+    local targetMaxBarsControl = createStepper(content, "Target max bars", function()
+        return activeGroup().maxBars or 16
+    end, function(value)
+        addon:SetTargetGroupMaxBars(activeGroup().id, value)
+    end, "TOPLEFT", groupEnabled, -142)
+    function targetMaxBarsControl:Refresh()
+        self:SetShown(activeGroup().unit == "target")
+        if activeGroup().unit == "target" then
+            self.value:SetText(tostring(activeGroup().maxBars or 16))
+        end
+    end
+    table.insert(groupControls, targetMaxBarsControl)
+
+    local sortButton = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    sortButton:SetPoint("TOPLEFT", groupEnabled, "BOTTOMLEFT", 0, -170)
+    sortButton:SetSize(240, 24)
     function sortButton:Refresh()
         local mode = activeGroup().sort or "EXPIRATION"
         self:SetText(mode == "NAME" and "Sort: Name" or "Sort: Expiration")
@@ -299,6 +360,55 @@ local function buildPanel()
         sortButton:Refresh()
     end)
     table.insert(groupControls, sortButton)
+
+    local growButton = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    growButton:SetPoint("TOPLEFT", groupEnabled, "BOTTOMLEFT", 0, -200)
+    growButton:SetSize(240, 24)
+    function growButton:Refresh()
+        self:SetText(activeGroup().grow == "UP" and "Grow: Up" or "Grow: Down")
+    end
+    growButton:SetScript("OnClick", function()
+        local group = activeGroup()
+        addon:SetGroupGrow(group.id, group.grow == "UP" and "DOWN" or "UP")
+        growButton:Refresh()
+    end)
+    table.insert(groupControls, growButton)
+
+    local chainButton = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    chainButton:SetPoint("TOPLEFT", groupEnabled, "BOTTOMLEFT", 0, -230)
+    chainButton:SetSize(260, 24)
+    local function getChainCandidates(group)
+        local candidates = { nil }
+        for _, candidate in ipairs(addon.db.profile.groups) do
+            if candidate.id < group.id then
+                table.insert(candidates, candidate.id)
+            end
+        end
+        return candidates
+    end
+    function chainButton:Refresh()
+        local parentId = activeGroup().anchorTo
+        local parent = parentId and addon.db.profile.groups[parentId]
+        self:SetText(parent and "Chain after: " .. parent.name or "Chain after: None")
+    end
+    chainButton:SetScript("OnClick", function()
+        local group = activeGroup()
+        local candidates = getChainCandidates(group)
+        local currentIndex = 1
+        for index, candidateId in ipairs(candidates) do
+            if candidateId == group.anchorTo then
+                currentIndex = index
+                break
+            end
+        end
+        local nextIndex = currentIndex + 1
+        if nextIndex > #candidates then
+            nextIndex = 1
+        end
+        addon:SetGroupChain(group.id, candidates[nextIndex])
+        chainButton:Refresh()
+    end)
+    table.insert(groupControls, chainButton)
 
     previousGroup:SetScript("OnClick", function()
         activeGroupIndex = activeGroupIndex - 1
@@ -314,11 +424,21 @@ local function buildPanel()
         end
         refreshGroupControls()
     end)
-    refreshGroupControls()
+    function panel:Refresh()
+        for _, control in ipairs(globalControls) do
+            control:Refresh()
+        end
+        refreshGroupControls()
+    end
+
+    panel:SetScript("OnShow", function()
+        panel:Refresh()
+    end)
+    panel:Refresh()
 
     local closeButton = CreateFrame("Button", "EBBPhoenixCloseButton", panel, "UIPanelButtonTemplate")
     closeButton:SetText("Close")
-    closeButton:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -12, 12)
+    closeButton:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -12, -12)
     closeButton:SetSize(90, 24)
     closeButton:SetScript("OnClick", function()
         panel:Hide()
@@ -340,6 +460,18 @@ function Options:Open()
         self.panel = buildPanel()
     end
     self.panel:Show()
+end
+
+function Options:RegisterSettingsCategory()
+    if self.settingsRegistered or not Settings or not Settings.RegisterCanvasLayoutCategory then
+        return
+    end
+
+    self.settingsPanel = createSettingsPanel()
+    local category = Settings.RegisterCanvasLayoutCategory(self.settingsPanel, "EBB Phoenix")
+    category.ID = "EBBPhoenix"
+    Settings.RegisterAddOnCategory(category)
+    self.settingsRegistered = true
 end
 
 function addon:ToggleOptions()

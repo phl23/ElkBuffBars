@@ -22,6 +22,58 @@ addon.frame:SetScript("OnEvent", function(frame, event, ...)
     end
 end)
 
+local hiddenBlizzardFrames = {}
+local blizzardFrameHooks = {}
+
+local function ensureBlizzardFrameHook(frameName)
+    if blizzardFrameHooks[frameName] then
+        return
+    end
+
+    local frame = _G[frameName]
+    if not frame or not frame.HookScript then
+        return
+    end
+
+    frame:HookScript("OnShow", function(currentFrame)
+        if hiddenBlizzardFrames[frameName] then
+            currentFrame:Hide()
+        end
+    end)
+    blizzardFrameHooks[frameName] = true
+end
+
+function addon:SetBlizzardFrameHidden(frameName, hidden)
+    local frame = _G[frameName]
+    if not frame then
+        return
+    end
+
+    ensureBlizzardFrameHook(frameName)
+    if hidden then
+        hiddenBlizzardFrames[frameName] = true
+        frame:Hide()
+        return
+    end
+
+    hiddenBlizzardFrames[frameName] = nil
+    frame:Show()
+    if frame.Update then
+        frame:Update()
+    elseif frameName == "BuffFrame" and BuffFrame_Update then
+        BuffFrame_Update()
+    end
+end
+
+function addon:ApplyBlizzardAuraVisibility()
+    if not self.db or not self.db.profile then
+        return
+    end
+
+    self:SetBlizzardFrameHidden("BuffFrame", self.db.profile.hideBlizzardBuffs)
+    self:SetBlizzardFrameHidden("DebuffFrame", self.db.profile.hideBlizzardDebuffs)
+end
+
 function addon:Initialize()
     if self.initialized then
         return
@@ -32,6 +84,8 @@ function addon:Initialize()
     self:BuildGroups()
     self:RegisterCoreEvents()
     self:CreateMinimapButton()
+    self:ApplyBlizzardAuraVisibility()
+    self.Options:RegisterSettingsCategory()
 
     if DEFAULT_CHAT_FRAME then
         DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix loaded: startup diagnostics active")
@@ -56,8 +110,24 @@ function addon:Initialize()
         end
     end
 
-    _G.SLASH_EBBPHOENIX1 = "/ebb"
+    _G.SLASH_EBBPHOENIX1 = "/px"
     _G.SLASH_EBBPHOENIX2 = "/phoenix"
+    _G.SLASH_EBBPHOENIX3 = "/pheonix"
+
+    local ebbIsInUse = false
+    for globalName, alias in pairs(_G) do
+        if type(globalName) == "string" and string.find(globalName, "^SLASH_") and type(alias) == "string" and string.lower(alias) == "/ebb" then
+            ebbIsInUse = true
+            break
+        end
+    end
+
+    if not ebbIsInUse and not _G.SlashCmdList["EBB"] then
+        _G.SlashCmdList["EBB"] = _G.SlashCmdList["EBBPHOENIX"]
+        _G.SLASH_EBB1 = "/ebb"
+    elseif DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: /ebb is already used; use /px or /phoenix")
+    end
 
     self:RefreshAll()
 end
@@ -82,10 +152,12 @@ end
 function addon:PLAYER_LOGIN()
     self:LoadSavedVariables()
     self:BuildGroups()
+    self.Options:RegisterSettingsCategory()
     self:RefreshAll()
 end
 
 function addon:PLAYER_ENTERING_WORLD()
+    self:ApplyBlizzardAuraVisibility()
     self:RefreshAll()
 end
 
@@ -148,6 +220,8 @@ function addon:BuildGroups()
         local group = self.Layout:CreateGroup(groupConfig)
         self.state.groups[groupConfig.id] = group
     end
+
+    self.Layout:UpdateChainedAnchors()
 end
 
 function addon:CreateMinimapButton()

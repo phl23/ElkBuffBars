@@ -9,6 +9,7 @@
 
 Compat.lua
 Settings.lua
+Media.lua
 AuraData.lua
 Layout.lua
 Renderer.lua
