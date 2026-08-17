@@ -62,6 +62,8 @@ function Compat:GetAuraDataByIndex(unitToken, index, filter)
         isStealable = isStealable,
         spellId = spellId,
         isFromPlayerOrPlayerPet = isFromPlayerOrPlayerPet,
+        isHelpful = filter == "HELPFUL",
+        isHarmful = filter == "HARMFUL",
     }
 end
 

@@ -8,8 +8,11 @@
 ## Category: Buffs & Debuffs
 
 Compat.lua
+Settings.lua
 AuraData.lua
 Layout.lua
 Renderer.lua
 Main.lua
+Minimap.lua
+Options.lua
 Core.lua

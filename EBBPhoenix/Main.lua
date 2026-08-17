@@ -14,8 +14,12 @@ function Main:RefreshGroup(group)
 end
 
 function Main:RefreshAll()
-    for _, group in ipairs(addon.state.config.groups) do
-        local actualGroup = addon.state.groups[group.id]
+    if not addon.state or not addon.state.config or not addon.state.config.groups then
+        return
+    end
+
+    for _, groupConfig in ipairs(addon.state.config.groups) do
+        local actualGroup = addon.state.groups[groupConfig.id]
         if actualGroup then
             self:RefreshGroup(actualGroup)
         end
@@ -28,7 +32,7 @@ function Main:RefreshUnit(unitToken)
     end
 
     for _, group in pairs(addon.state.groups) do
-        if group.unit == unitToken then
+        if group and group.unit == unitToken then
             self:RefreshGroup(group)
         end
     end
