@@ -67,17 +67,6 @@ function Compat:GetAuraDataByIndex(unitToken, index, filter)
     }
 end
 
-function Compat:GetNumAuras(unitToken, filter)
-    if C_UnitAuras and C_UnitAuras.GetAuraDataByUnit then
-        local auraData = C_UnitAuras.GetAuraDataByUnit(unitToken, filter)
-        if auraData then
-            return #auraData
-        end
-    end
-
-    return select(2, UnitAura(unitToken, 1, filter)) and 1 or 0
-end
-
 function Compat:SafeFrameLookup(name)
     if not name then
         return nil

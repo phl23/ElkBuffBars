@@ -22,7 +22,7 @@ local function normalizeAura(rawAura, unitToken, auraIndex)
         expiresAt = rawAura.expirationTime or 0,
         remaining = remaining,
         debuffType = rawAura.dispelName or rawAura.debuffType or "none",
-        charges = rawAura.charges or 0,
+        charges = rawAura.applications or rawAura.charges or rawAura.count or 0,
         spellId = rawAura.spellId,
         index = auraIndex or rawAura.index,
         duration = rawAura.duration or 0,
@@ -34,38 +34,19 @@ end
 
 function AuraData:Collect(unitToken, filterType)
     local results = {}
-    local auraCount = 0
-
-    if C_UnitAuras and C_UnitAuras.GetAuraDataByUnit then
-        local auraList = C_UnitAuras.GetAuraDataByUnit(unitToken, filterType)
-        if auraList then
-            for index, rawAura in ipairs(auraList) do
-                local aura = normalizeAura(rawAura, unitToken, index)
-                if aura then
-                    auraCount = auraCount + 1
-                    results[auraCount] = aura
-                end
-            end
+    local index = 1
+    while true do
+        local rawAura = Compat:GetAuraDataByIndex(unitToken, index, filterType)
+        if not rawAura then
+            break
         end
-    end
 
-    if auraCount == 0 then
-        local index = 1
-        while true do
-            local rawAura = Compat:GetAuraDataByIndex(unitToken, index, filterType)
-            if not rawAura then
-                break
-            end
-
-            local aura = normalizeAura(rawAura, unitToken)
-            if aura then
-                aura.index = index
-                auraCount = auraCount + 1
-                results[auraCount] = aura
-            end
-
-            index = index + 1
+        local aura = normalizeAura(rawAura, unitToken, index)
+        if aura then
+            table.insert(results, aura)
         end
+
+        index = index + 1
     end
 
     table.sort(results, function(left, right)
