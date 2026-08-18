@@ -21,6 +21,41 @@ addon.frame:SetScript("OnEvent", function(frame, event, ...)
         addon[event](addon, ...)
     end
 end)
+addon.frame:SetScript("OnUpdate", function(_, elapsed)
+    addon:UpdateDurationDisplays(elapsed)
+end)
+
+function addon:RegisterSlashCommands()
+    if self.slashCommandsRegistered then
+        return
+    end
+
+    if not _G.SlashCmdList then
+        _G.SlashCmdList = {}
+    end
+
+    _G.SlashCmdList["EBBPHOENIX"] = function(msg)
+        local command = string.lower(tostring(msg or ""))
+
+        if command == "status" then
+            addon:PrintStatus()
+        elseif command == "reset" then
+            addon:ResetPositions()
+            DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: bar positions reset")
+        elseif addon.Options and addon.Options.Open then
+            addon.Options:Open()
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: options not available yet")
+        end
+    end
+
+    _G.SLASH_EBBPHOENIX1 = "/px"
+    _G.SLASH_EBBPHOENIX2 = "/phoenix"
+    _G.SLASH_EBBPHOENIX3 = "/pheonix"
+    self.slashCommandsRegistered = true
+end
+
+addon:RegisterSlashCommands()
 
 local hiddenBlizzardFrames = {}
 local blizzardFrameHooks = {}
@@ -81,39 +116,6 @@ function addon:Initialize()
 
     self.initialized = true
     self:LoadSavedVariables()
-    self:BuildGroups()
-    self:RegisterCoreEvents()
-    self:CreateMinimapButton()
-    self:ApplyBlizzardAuraVisibility()
-    self.Options:RegisterSettingsCategory()
-
-    if DEFAULT_CHAT_FRAME then
-        DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix loaded: startup diagnostics active")
-    end
-
-    if not _G.SlashCmdList then
-        _G.SlashCmdList = {}
-    end
-
-    _G.SlashCmdList["EBBPHOENIX"] = function(msg)
-        local command = string.lower(tostring(msg or ""))
-
-        if command == "status" then
-            addon:PrintStatus()
-        elseif command == "reset" then
-            addon:ResetPositions()
-            DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: bar positions reset")
-        elseif addon.Options and addon.Options.Open then
-            addon.Options:Open()
-        else
-            DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: options not available yet")
-        end
-    end
-
-    _G.SLASH_EBBPHOENIX1 = "/px"
-    _G.SLASH_EBBPHOENIX2 = "/phoenix"
-    _G.SLASH_EBBPHOENIX3 = "/pheonix"
-
     local ebbIsInUse = false
     for globalName, alias in pairs(_G) do
         if type(globalName) == "string" and string.find(globalName, "^SLASH_") and type(alias) == "string" and string.lower(alias) == "/ebb" then
@@ -129,6 +131,11 @@ function addon:Initialize()
         DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: /ebb is already used; use /px or /phoenix")
     end
 
+    self:BuildGroups()
+    self:RegisterCoreEvents()
+    self:CreateMinimapButton()
+    self:ApplyBlizzardAuraVisibility()
+    self.Options:RegisterSettingsCategory()
     self:RefreshAll()
 end
 
@@ -202,6 +209,18 @@ function addon:RefreshUnit(unitToken)
         return
     end
     self.Main:RefreshUnit(unitToken)
+end
+
+function addon:UpdateDurationDisplays(elapsed)
+    self.state.durationElapsed = (self.state.durationElapsed or 0) + elapsed
+    if self.state.durationElapsed < 0.1 then
+        return
+    end
+
+    self.state.durationElapsed = 0
+    if self.Main and self.Main.UpdateDurationDisplays then
+        self.Main:UpdateDurationDisplays()
+    end
 end
 
 function addon:BuildGroups()

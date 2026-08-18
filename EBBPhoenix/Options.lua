@@ -123,11 +123,18 @@ local function createStepper(parent, label, getter, setter, anchor, relativeTo, 
     return control
 end
 
+local function createProfileNameInput(parent)
+    local input = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+    input:SetSize(164, 24)
+    input:SetAutoFocus(false)
+    input:SetMaxLetters(40)
+    return input
+end
+
 local function buildPanel()
     local panel = CreateFrame("Frame", "EBBPhoenixOptionsPanel", UIParent)
     panel:SetWidth(760)
-    panel:SetHeight(460)
-    local content = panel
+    panel:SetHeight(560)
     UISpecialFrames = UISpecialFrames or {}
     table.insert(UISpecialFrames, "EBBPhoenixOptionsPanel")
     panel.name = "EBB Phoenix"
@@ -154,23 +161,31 @@ local function buildPanel()
     inner:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -2, 2)
     inner:SetColorTexture(0.03, 0.03, 0.03, 0.96)
 
-    local title = content:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 16, -16)
     title:SetText("EBB Phoenix")
     title:SetTextColor(1, 0.82, 0.2)
 
-    local subtitle = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local subtitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
     subtitle:SetText("Modern buff and debuff bar groups")
     subtitle:SetTextColor(unpack(colors.muted))
 
+    local scrollFrame = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", subtitle, "BOTTOMLEFT", 0, -16)
+    scrollFrame:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -32, 16)
+
+    local content = CreateFrame("Frame", nil, scrollFrame)
+    content:SetSize(710, 720)
+    scrollFrame:SetScrollChild(content)
+
     local generalColumn = CreateFrame("Frame", nil, content)
-    generalColumn:SetPoint("TOPLEFT", subtitle, "BOTTOMLEFT", 0, -16)
-    generalColumn:SetSize(340, 360)
+    generalColumn:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
+    generalColumn:SetSize(340, 680)
 
     local groupColumn = CreateFrame("Frame", nil, content)
     groupColumn:SetPoint("TOPLEFT", generalColumn, "TOPRIGHT", 22, 0)
-    groupColumn:SetSize(370, 360)
+    groupColumn:SetSize(340, 680)
 
     local divider = content:CreateTexture(nil, "ARTWORK")
     divider:SetPoint("TOPLEFT", generalColumn, "TOPRIGHT", 10, 0)
@@ -334,6 +349,129 @@ local function buildPanel()
     resetButton:SetSize(120, 24)
     resetButton:SetScript("OnClick", function()
         addon:ResetPositions()
+    end)
+
+    local profileTitle = generalColumn:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    profileTitle:SetPoint("TOPLEFT", resetButton, "BOTTOMLEFT", 0, -20)
+    profileTitle:SetText("Profiles")
+    profileTitle:SetTextColor(unpack(colors.heading))
+
+    local profileControls = {}
+    local profileButton = CreateFrame("Button", nil, generalColumn, "UIPanelButtonTemplate")
+    profileButton:SetPoint("TOPLEFT", profileTitle, "BOTTOMLEFT", 0, -8)
+    profileButton:SetSize(250, 24)
+    function profileButton:Refresh()
+        self:SetText("Profile: " .. addon:GetCurrentProfile())
+    end
+    profileButton:SetScript("OnClick", function()
+        local profiles = addon:GetProfileNames()
+        local currentProfile = addon:GetCurrentProfile()
+        local currentIndex = 1
+        for index, profileName in ipairs(profiles) do
+            if profileName == currentProfile then
+                currentIndex = index
+                break
+            end
+        end
+        local nextIndex = currentIndex + 1
+        if nextIndex > #profiles then
+            nextIndex = 1
+        end
+        addon:SetProfile(profiles[nextIndex])
+    end)
+    table.insert(profileControls, profileButton)
+
+    local newProfileInput = createProfileNameInput(generalColumn)
+    newProfileInput:SetPoint("TOPLEFT", profileButton, "BOTTOMLEFT", 4, -10)
+
+    local useProfileButton = CreateFrame("Button", nil, generalColumn, "UIPanelButtonTemplate")
+    useProfileButton:SetPoint("LEFT", newProfileInput, "RIGHT", 8, 0)
+    useProfileButton:SetSize(68, 24)
+    useProfileButton:SetText("Use")
+    local function useEnteredProfile()
+        local profileName = string.match(newProfileInput:GetText() or "", "^%s*(.-)%s*$")
+        if profileName and profileName ~= "" then
+            addon:SetProfile(profileName)
+            newProfileInput:SetText("")
+            newProfileInput:ClearFocus()
+        end
+    end
+    useProfileButton:SetScript("OnClick", useEnteredProfile)
+    newProfileInput:SetScript("OnEnterPressed", useEnteredProfile)
+
+    local copySourceName
+    local copySourceButton = CreateFrame("Button", nil, generalColumn, "UIPanelButtonTemplate")
+    copySourceButton:SetPoint("TOPLEFT", newProfileInput, "BOTTOMLEFT", -4, -10)
+    copySourceButton:SetSize(160, 24)
+    function copySourceButton:Refresh()
+        local currentProfile = addon:GetCurrentProfile()
+        local profiles = addon:GetProfileNames()
+        local sourceExists = false
+        for _, profileName in ipairs(profiles) do
+            if profileName == copySourceName and profileName ~= currentProfile then
+                sourceExists = true
+                break
+            end
+        end
+        if not sourceExists then
+            copySourceName = nil
+            for _, profileName in ipairs(profiles) do
+                if profileName ~= currentProfile then
+                    copySourceName = profileName
+                    break
+                end
+            end
+        end
+        self:SetText(copySourceName and "Copy from: " .. copySourceName or "Copy from: None")
+    end
+    copySourceButton:SetScript("OnClick", function()
+        local profiles = addon:GetProfileNames()
+        local currentProfile = addon:GetCurrentProfile()
+        local candidates = {}
+        for _, profileName in ipairs(profiles) do
+            if profileName ~= currentProfile then
+                table.insert(candidates, profileName)
+            end
+        end
+        if #candidates == 0 then
+            return
+        end
+        local currentIndex = 0
+        for index, profileName in ipairs(candidates) do
+            if profileName == copySourceName then
+                currentIndex = index
+                break
+            end
+        end
+        copySourceName = candidates[(currentIndex % #candidates) + 1]
+        copySourceButton:Refresh()
+    end)
+    table.insert(profileControls, copySourceButton)
+
+    local copyProfileButton = CreateFrame("Button", nil, generalColumn, "UIPanelButtonTemplate")
+    copyProfileButton:SetPoint("LEFT", copySourceButton, "RIGHT", 8, 0)
+    copyProfileButton:SetSize(68, 24)
+    copyProfileButton:SetText("Copy")
+    copyProfileButton:SetScript("OnClick", function()
+        addon:CopyProfile(copySourceName)
+    end)
+
+    local resetProfileButton = CreateFrame("Button", nil, generalColumn, "UIPanelButtonTemplate")
+    resetProfileButton:SetPoint("TOPLEFT", copySourceButton, "BOTTOMLEFT", 0, -10)
+    resetProfileButton:SetSize(120, 24)
+    resetProfileButton:SetText("Reset Profile")
+    resetProfileButton:SetScript("OnClick", function()
+        addon:ResetProfile()
+    end)
+
+    local deleteProfileButton = CreateFrame("Button", nil, generalColumn, "UIPanelButtonTemplate")
+    deleteProfileButton:SetPoint("LEFT", resetProfileButton, "RIGHT", 8, 0)
+    deleteProfileButton:SetSize(100, 24)
+    deleteProfileButton:SetText("Delete Source")
+    deleteProfileButton:SetScript("OnClick", function()
+        addon:DeleteProfile(copySourceName)
+        copySourceName = nil
+        copySourceButton:Refresh()
     end)
 
     local activeGroupIndex = 1
@@ -511,6 +649,9 @@ local function buildPanel()
     end)
     function panel:Refresh()
         for _, control in ipairs(globalControls) do
+            control:Refresh()
+        end
+        for _, control in ipairs(profileControls) do
             control:Refresh()
         end
         refreshGroupControls()

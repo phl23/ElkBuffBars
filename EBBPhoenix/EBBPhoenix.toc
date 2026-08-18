@@ -7,6 +7,9 @@
 ## SavedVariables: EBBPhoenixDB
 ## Category: Buffs & Debuffs
 
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+libs\AceDB-3.0\AceDB-3.0.lua
 Compat.lua
 Settings.lua
 Media.lua

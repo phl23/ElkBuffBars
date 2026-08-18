@@ -8,8 +8,8 @@ addon.defaults = {
             lock = false,
         },
         locked = false,
-        barTexture = "You Are The Best!",
-        barStyle = "luna",
+        barTexture = "Luna Minimalist",
+        barStyle = "minimal_clean",
         barSpacing = 4,
         colorDebuffsByType = false,
         font = "Aldrich",
@@ -157,11 +157,143 @@ function addon:ApplyProfileDefaults()
 end
 
 function addon:LoadSavedVariables()
-    _G[addonName .. "DB"] = _G[addonName .. "DB"] or {}
-    self.db = _G[addonName .. "DB"]
-    self.db.profile = self.db.profile or {}
+    if self.db then
+        return
+    end
+
+    local databaseName = addonName .. "DB"
+    local savedVariables = _G[databaseName] or {}
+    local migrateLegacyProfile = savedVariables.profile and not savedVariables.profiles
+
+    if migrateLegacyProfile then
+        savedVariables.profiles = { Default = savedVariables.profile }
+        savedVariables.profile = nil
+    end
+
+    _G[databaseName] = savedVariables
+    local AceDB = LibStub and LibStub("AceDB-3.0", true)
+    if AceDB then
+        self.usingAceDB = true
+        self.db = AceDB:New(databaseName, self.defaults)
+        if migrateLegacyProfile then
+            self.db:SetProfile("Default")
+        end
+
+        self.db:RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
+        self.db:RegisterCallback(self, "OnProfileCopied", "OnProfileChanged")
+        self.db:RegisterCallback(self, "OnProfileReset", "OnProfileChanged")
+    else
+        self.usingAceDB = false
+        savedVariables.profiles = savedVariables.profiles or {}
+        savedVariables.profileKeys = savedVariables.profileKeys or {}
+
+        local characterName = UnitName("player") or "Unknown"
+        local realmName = GetRealmName() or "Unknown Realm"
+        local characterKey = characterName .. " - " .. realmName
+        local profileName = savedVariables.profileKeys[characterKey] or characterKey
+        savedVariables.profileKeys[characterKey] = profileName
+        savedVariables.profiles[profileName] = savedVariables.profiles[profileName] or {}
+
+        self.db = {
+            profile = savedVariables.profiles[profileName],
+            profileName = profileName,
+            savedVariables = savedVariables,
+            characterKey = characterKey,
+        }
+    end
     self:ApplyProfileDefaults()
     self.state.config.groups = self.db.profile.groups
+end
+
+function addon:OnProfileChanged()
+    self:ApplyProfileDefaults()
+    self.state.config.groups = self.db.profile.groups
+    self:BuildGroups()
+    self:ApplyBlizzardAuraVisibility()
+    self:RefreshAll()
+    if self.Options and self.Options.panel then
+        self.Options.panel:Refresh()
+    end
+end
+
+function addon:GetProfileNames()
+    local profiles = self.usingAceDB and self.db:GetProfiles() or {}
+    if not self.usingAceDB then
+        for profileName in pairs(self.db.savedVariables.profiles) do
+            table.insert(profiles, profileName)
+        end
+    end
+    table.sort(profiles)
+    return profiles
+end
+
+function addon:GetCurrentProfile()
+    return self.usingAceDB and self.db:GetCurrentProfile() or self.db.profileName
+end
+
+function addon:SetProfile(profileName)
+    if type(profileName) ~= "string" or profileName == "" then
+        return
+    end
+
+    if self.usingAceDB then
+        self.db:SetProfile(profileName)
+        return
+    end
+
+    local savedVariables = self.db.savedVariables
+    savedVariables.profiles[profileName] = savedVariables.profiles[profileName] or {}
+    savedVariables.profileKeys[self.db.characterKey] = profileName
+    self.db.profileName = profileName
+    self.db.profile = savedVariables.profiles[profileName]
+    self:OnProfileChanged()
+end
+
+function addon:CopyProfile(profileName)
+    if not profileName or profileName == self:GetCurrentProfile() then
+        return
+    end
+
+    if self.usingAceDB then
+        self.db:CopyProfile(profileName)
+        return
+    end
+
+    local source = self.db.savedVariables.profiles[profileName]
+    if source then
+        self.db.profile = CopyTable(source)
+        self.db.savedVariables.profiles[self.db.profileName] = self.db.profile
+        self:OnProfileChanged()
+    end
+end
+
+function addon:DeleteProfile(profileName)
+    if not profileName or profileName == self:GetCurrentProfile() then
+        return
+    end
+
+    if self.usingAceDB then
+        self.db:DeleteProfile(profileName)
+        return
+    end
+
+    self.db.savedVariables.profiles[profileName] = nil
+    for characterKey, assignedProfile in pairs(self.db.savedVariables.profileKeys) do
+        if assignedProfile == profileName then
+            self.db.savedVariables.profileKeys[characterKey] = nil
+        end
+    end
+end
+
+function addon:ResetProfile()
+    if self.usingAceDB then
+        self.db:ResetProfile()
+        return
+    end
+
+    self.db.profile = {}
+    self.db.savedVariables.profiles[self.db.profileName] = self.db.profile
+    self:OnProfileChanged()
 end
 
 function addon:AddGroup(groupConfig)

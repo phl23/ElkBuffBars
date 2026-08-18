@@ -5,10 +5,10 @@ addon.Media = addon.Media or {}
 local Media = addon.Media
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
-Media.defaultBarTexture = "You Are The Best!"
+Media.defaultBarTexture = "Luna Minimalist"
 Media.defaultBarTexturePath = "Interface\\AddOns\\EBBPhoenix\\media\\Minimalist"
 Media.defaultFont = "Aldrich"
-Media.defaultBarStyle = "luna"
+Media.defaultBarStyle = "minimal_clean"
 Media.barStyles = {
     { id = "classic_ebb", name = "Classic EBB", family = "Classic", texture = "Interface\\TargetingFrame\\UI-StatusBar", background = { 0.01, 0.01, 0.01, 0.9 }, border = { 0.18, 0.18, 0.18, 1 }, buff = { 0.08, 0.36, 0.78, 0.96 }, debuff = { 0.78, 0.08, 0.08, 0.96 }, text = { 1, 1, 1, 1 }, duration = { 1, 1, 1, 1 }, borderSize = 1, iconInset = 2 },
     { id = "luna", name = "Luna Classic", family = "Luna", texture = "You Are The Best!", background = { 0.02, 0.04, 0.07, 0.88 }, border = { 0.12, 0.26, 0.4, 1 }, buff = { 0.2, 0.55, 0.95, 0.86 }, debuff = { 0.85, 0.2, 0.2, 0.88 }, text = { 1, 0.88, 0.4, 1 }, duration = { 1, 0.9, 0.52, 1 }, borderSize = 1, iconInset = 4 },

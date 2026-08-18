@@ -146,11 +146,6 @@ function Layout:CreateBar(parent)
 
     self:ApplyBarStyle(bar)
 
-    bar:SetScript("OnUpdate", function(currentBar)
-        if currentBar.aura then
-            Layout:UpdateBarDuration(currentBar)
-        end
-    end)
     bar:SetScript("OnEnter", function(currentBar)
         local aura = currentBar.aura
         if not aura or not GameTooltip then

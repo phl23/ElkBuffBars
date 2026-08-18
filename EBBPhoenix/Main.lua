@@ -42,8 +42,14 @@ function Main:RefreshUnit(unitToken)
     addon.Layout:UpdateChainedAnchors()
 end
 
-addon.Main = Main
-
-if addon.frame then
-    addon.frame:RegisterEvent("PLAYER_LOGIN")
+function Main:UpdateDurationDisplays()
+    for _, group in pairs(addon.state.groups) do
+        if group and group.frame and group.frame:IsShown() then
+            for _, bar in ipairs(group.bars) do
+                addon.Layout:UpdateBarDuration(bar)
+            end
+        end
+    end
 end
+
+addon.Main = Main
