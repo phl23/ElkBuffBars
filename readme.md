@@ -4,11 +4,11 @@ Phoenix is a modern aura-bar addon for WoW Classic and Anniversary TBC, built on
 
 ## Installation
 
-1. Copy the `EBBPhoenix` folder into `World of Warcraft\_classic_era_\Interface\AddOns\`.
+1. Copy the `Phoenix` folder into `World of Warcraft\_classic_era_\Interface\AddOns\`.
 2. Start the game and enable **Phoenix** in the AddOns list.
 3. Use `/reload` after updating the folder while the game is running.
 
-The folder must remain named `EBBPhoenix`: WoW uses that folder name to locate the bundled media and saved settings.
+The folder must remain named `Phoenix`: WoW uses that folder name to locate the bundled media and saved settings.
 
 ## Opening Phoenix
 

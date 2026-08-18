@@ -157,10 +157,7 @@ function addon:RegisterCoreEvents()
 end
 
 function addon:PLAYER_LOGIN()
-    self:LoadSavedVariables()
-    self:BuildGroups()
-    self.Options:RegisterSettingsCategory()
-    self:RefreshAll()
+    self:Initialize()
 end
 
 function addon:PLAYER_ENTERING_WORLD()
@@ -270,4 +267,3 @@ function addon:PrintStatus()
     end
 end
 
-addon:Initialize()

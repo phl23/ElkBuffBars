@@ -161,7 +161,7 @@ function addon:LoadSavedVariables()
         return
     end
 
-    local databaseName = addonName .. "DB"
+    local databaseName = "EBBPhoenixDB"
     local savedVariables = _G[databaseName] or {}
     local migrateLegacyProfile = savedVariables.profile and not savedVariables.profiles
 
@@ -171,36 +171,34 @@ function addon:LoadSavedVariables()
     end
 
     _G[databaseName] = savedVariables
-    local AceDB = LibStub and LibStub("AceDB-3.0", true)
-    if AceDB then
-        self.usingAceDB = true
-        self.db = AceDB:New(databaseName, self.defaults)
-        if migrateLegacyProfile then
-            self.db:SetProfile("Default")
+    self.usingAceDB = false
+    savedVariables.profiles = savedVariables.profiles or {}
+    savedVariables.profileKeys = savedVariables.profileKeys or {}
+
+    local characterName = UnitName("player") or "Unknown"
+    local realmName = GetRealmName() or "Unknown Realm"
+    local characterKey = characterName .. " - " .. realmName
+    local profileName = savedVariables.profileKeys[characterKey]
+    if not profileName then
+        local onlyProfileName
+        for existingProfileName in pairs(savedVariables.profiles) do
+            if onlyProfileName then
+                onlyProfileName = nil
+                break
+            end
+            onlyProfileName = existingProfileName
         end
-
-        self.db:RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
-        self.db:RegisterCallback(self, "OnProfileCopied", "OnProfileChanged")
-        self.db:RegisterCallback(self, "OnProfileReset", "OnProfileChanged")
-    else
-        self.usingAceDB = false
-        savedVariables.profiles = savedVariables.profiles or {}
-        savedVariables.profileKeys = savedVariables.profileKeys or {}
-
-        local characterName = UnitName("player") or "Unknown"
-        local realmName = GetRealmName() or "Unknown Realm"
-        local characterKey = characterName .. " - " .. realmName
-        local profileName = savedVariables.profileKeys[characterKey] or characterKey
-        savedVariables.profileKeys[characterKey] = profileName
-        savedVariables.profiles[profileName] = savedVariables.profiles[profileName] or {}
-
-        self.db = {
-            profile = savedVariables.profiles[profileName],
-            profileName = profileName,
-            savedVariables = savedVariables,
-            characterKey = characterKey,
-        }
+        profileName = onlyProfileName or characterKey
     end
+    savedVariables.profileKeys[characterKey] = profileName
+    savedVariables.profiles[profileName] = savedVariables.profiles[profileName] or {}
+
+    self.db = {
+        profile = savedVariables.profiles[profileName],
+        profileName = profileName,
+        savedVariables = savedVariables,
+        characterKey = characterKey,
+    }
     self:ApplyProfileDefaults()
     self.state.config.groups = self.db.profile.groups
 end
