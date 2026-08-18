@@ -4,6 +4,47 @@ addon.Layout = addon.Layout or {}
 
 local Layout = addon.Layout
 
+local function utf8Prefix(text, characterCount)
+    local index = 1
+    local length = #text
+    for _ = 1, characterCount do
+        if index > length then
+            return text
+        end
+
+        local byte = string.byte(text, index)
+        if byte < 0x80 then
+            index = index + 1
+        elseif byte < 0xE0 then
+            index = index + 2
+        elseif byte < 0xF0 then
+            index = index + 3
+        else
+            index = index + 4
+        end
+    end
+    return string.sub(text, 1, index - 1)
+end
+
+local function utf8Length(text)
+    local index = 1
+    local count = 0
+    while index <= #text do
+        local byte = string.byte(text, index)
+        if byte < 0x80 then
+            index = index + 1
+        elseif byte < 0xE0 then
+            index = index + 2
+        elseif byte < 0xF0 then
+            index = index + 3
+        else
+            index = index + 4
+        end
+        count = count + 1
+    end
+    return count
+end
+
 function Layout:CreateGroup(groupConfig)
     local group = {
         id = groupConfig.id,
@@ -80,6 +121,7 @@ function Layout:CreateBar(parent)
     if not bar.text then
         bar.text = bar.fill:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         bar.text:SetJustifyH("LEFT")
+        bar.text:SetWordWrap(false)
     end
 
     if not bar.duration then
@@ -93,8 +135,16 @@ function Layout:CreateBar(parent)
     if not bar.background then
         bar.background = bar:CreateTexture(nil, "BACKGROUND")
         bar.background:SetAllPoints(bar)
-        bar.background:SetColorTexture(0, 0, 0, 0.7)
     end
+
+    if not bar.borders then
+        bar.borders = {}
+        for _, side in ipairs({ "top", "bottom", "left", "right" }) do
+            bar.borders[side] = bar:CreateTexture(nil, "OVERLAY")
+        end
+    end
+
+    self:ApplyBarStyle(bar)
 
     bar:SetScript("OnUpdate", function(currentBar)
         if currentBar.aura then
@@ -177,6 +227,7 @@ function Layout:RefreshGroup(group, auraList)
 
     local visibleAuras = auraList or {}
     local bars = group.bars
+    local spacing = addon.db and addon.db.profile and addon.db.profile.barSpacing or 4
     local visibleCount = group.maxBars and math.min(#visibleAuras, group.maxBars) or #visibleAuras
 
     for index = #bars + 1, visibleCount do
@@ -203,9 +254,9 @@ function Layout:RefreshGroup(group, auraList)
             bar:SetPoint("TOPLEFT", group.frame, "TOPLEFT", 0, 0)
         else
             if group.grow == "UP" then
-                bar:SetPoint("BOTTOMLEFT", bars[index - 1], "TOPLEFT", 0, 4)
+                bar:SetPoint("BOTTOMLEFT", bars[index - 1], "TOPLEFT", 0, spacing)
             else
-                bar:SetPoint("TOPLEFT", bars[index - 1], "BOTTOMLEFT", 0, -4)
+                bar:SetPoint("TOPLEFT", bars[index - 1], "BOTTOMLEFT", 0, -spacing)
             end
         end
         bar:SetSize(group.width, group.height)
@@ -213,7 +264,7 @@ function Layout:RefreshGroup(group, auraList)
         bar:Show()
     end
 
-    group.frame:SetHeight(math.max(group.height, (visibleCount * group.height) + math.max(0, visibleCount - 1) * 4))
+    group.frame:SetHeight(math.max(group.height, (visibleCount * group.height) + math.max(0, visibleCount - 1) * spacing))
 end
 
 function Layout:UpdateBarLayout(bar)
@@ -221,19 +272,107 @@ function Layout:UpdateBarLayout(bar)
         return
     end
 
-    local iconSize = math.max(12, math.min(24, bar:GetHeight() - 4))
+    local style = addon.Media:GetBarStyle()
+    local iconInset = style.iconInset or 4
+    local iconSize = math.max(12, math.min(24, bar:GetHeight() - (iconInset * 2)))
     bar.icon:SetSize(iconSize, iconSize)
     bar.icon:ClearAllPoints()
-    bar.icon:SetPoint("LEFT", bar.fill, "LEFT", 4, 0)
+    bar.icon:SetPoint("LEFT", bar.fill, "LEFT", iconInset, 0)
 
     bar.duration:ClearAllPoints()
-    bar.duration:SetPoint("RIGHT", bar.fill, "RIGHT", -6, 0)
+    bar.duration:SetPoint("RIGHT", bar.fill, "RIGHT", -(iconInset + 2), 0)
     bar.text:ClearAllPoints()
-    bar.text:SetPoint("LEFT", bar.icon, "RIGHT", 6, 0)
+    bar.text:SetPoint("LEFT", bar.icon, "RIGHT", iconInset + 2, 0)
     bar.text:SetPoint("RIGHT", bar.duration, "LEFT", -8, 0)
 end
 
+local function blendColor(base, tint, amount)
+    return {
+        base[1] + (tint[1] - base[1]) * amount,
+        base[2] + (tint[2] - base[2]) * amount,
+        base[3] + (tint[3] - base[3]) * amount,
+        base[4],
+    }
+end
+
+local debuffTypePalette = {
+    magic = { 0.2, 0.58, 1.0 },
+    curse = { 0.62, 0.38, 0.95 },
+    disease = { 0.78, 0.7, 0.12 },
+    poison = { 0.12, 0.78, 0.24 },
+}
+
+local function getDebuffColor(aura, style)
+    if addon.db and addon.db.profile and addon.db.profile.colorDebuffsByType and aura.debuffType then
+        local typeName = string.lower(tostring(aura.debuffType))
+        local color = debuffTypePalette[typeName]
+        if color then
+            return { color[1], color[2], color[3], style.debuff[4] }
+        end
+    end
+    return style.debuff
+end
+
+local function getAuraPalette(style, aura)
+    if aura and aura.type == "DEBUFF" then
+        local debuff = getDebuffColor(aura, style)
+        return {
+            background = blendColor(style.background, { debuff[1] * 0.3, debuff[2] * 0.3, debuff[3] * 0.3, 1 }, 0.62),
+            border = blendColor(style.border, { debuff[1], debuff[2], debuff[3], 1 }, 0.72),
+            text = blendColor(style.text, { 1, debuff[2] * 0.65 + 0.35, debuff[3] * 0.65 + 0.35, 1 }, 0.46),
+            duration = blendColor(style.duration, { debuff[1], debuff[2] * 0.7 + 0.3, debuff[3] * 0.7 + 0.3, 1 }, 0.6),
+        }
+    end
+
+    return {
+        background = blendColor(style.background, { 0.015, 0.1, 0.25, 1 }, 0.52),
+        border = blendColor(style.border, { 0.14, 0.68, 1, 1 }, 0.58),
+        text = blendColor(style.text, { 0.74, 0.92, 1, 1 }, 0.38),
+        duration = blendColor(style.duration, { 0.4, 0.82, 1, 1 }, 0.54),
+    }
+end
+
+function Layout:ApplyBarStyle(bar, aura)
+    local style = addon.Media:GetBarStyle()
+    local borderSize = style.borderSize or 1
+    local palette = getAuraPalette(style, aura)
+    local background = palette.background
+    local border = palette.border
+
+    bar.fill:ClearAllPoints()
+    bar.fill:SetPoint("TOPLEFT", bar, "TOPLEFT", borderSize, -borderSize)
+    bar.fill:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -borderSize, borderSize)
+    bar.fill:SetStatusBarTexture(addon.Media:GetBarStyleTexture(style))
+    bar.background:SetColorTexture(background[1], background[2], background[3], background[4])
+
+    local borders = bar.borders
+    borders.top:ClearAllPoints()
+    borders.top:SetPoint("TOPLEFT", bar, "TOPLEFT")
+    borders.top:SetPoint("TOPRIGHT", bar, "TOPRIGHT")
+    borders.top:SetHeight(borderSize)
+    borders.bottom:ClearAllPoints()
+    borders.bottom:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT")
+    borders.bottom:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
+    borders.bottom:SetHeight(borderSize)
+    borders.left:ClearAllPoints()
+    borders.left:SetPoint("TOPLEFT", bar, "TOPLEFT")
+    borders.left:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT")
+    borders.left:SetWidth(borderSize)
+    borders.right:ClearAllPoints()
+    borders.right:SetPoint("TOPRIGHT", bar, "TOPRIGHT")
+    borders.right:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
+    borders.right:SetWidth(borderSize)
+    for _, edge in pairs(borders) do
+        edge:SetColorTexture(border[1], border[2], border[3], border[4])
+    end
+
+    bar.text:SetTextColor(palette.text[1], palette.text[2], palette.text[3], palette.text[4])
+    bar.duration:SetTextColor(palette.duration[1], palette.duration[2], palette.duration[3], palette.duration[4])
+    self:UpdateBarLayout(bar)
+end
+
 function Layout:UpdateChainedAnchors()
+    local spacing = addon.db and addon.db.profile and addon.db.profile.barSpacing or 4
     for _, group in pairs(addon.state.groups) do
         local parentId = group.config.anchorTo
         local parent = parentId and addon.state.groups[parentId]
@@ -244,10 +383,10 @@ function Layout:UpdateChainedAnchors()
 
             if parent.grow == "UP" then
                 local anchorFrame = terminalBar or parent.frame
-                group.frame:SetPoint("TOPLEFT", anchorFrame, "TOPLEFT", 0, group.height + 4)
+                group.frame:SetPoint("TOPLEFT", anchorFrame, "TOPLEFT", 0, group.height + spacing)
             else
                 local anchorFrame = terminalBar or parent.frame
-                group.frame:SetPoint("TOPLEFT", anchorFrame, "BOTTOMLEFT", 0, -4)
+                group.frame:SetPoint("TOPLEFT", anchorFrame, "BOTTOMLEFT", 0, -spacing)
             end
         end
     end
@@ -259,6 +398,7 @@ function Layout:ApplyAuraToBar(bar, aura)
     end
 
     self:ApplyBarFont(bar)
+    self:ApplyBarStyle(bar, aura)
 
     if bar.group.icon and aura.icon then
         bar.icon:SetTexture(aura.icon)
@@ -269,29 +409,38 @@ function Layout:ApplyAuraToBar(bar, aura)
 
     if bar.group.text then
         local stackText = aura.charges and aura.charges > 1 and " (" .. aura.charges .. ")" or ""
-        bar.text:SetText((aura.name or "") .. stackText)
+        bar.text.fullName = (aura.name or "") .. stackText
         bar.text:Show()
     else
+        bar.text.fullName = ""
         bar.text:SetText("")
         bar.text:Hide()
     end
     bar.aura = aura
     self:UpdateBarDuration(bar)
+    self:UpdateAuraName(bar)
 
     if aura.isDummy then
-        bar.fill:SetStatusBarTexture(addon.Media:GetBarTexture())
-        bar.fill:SetStatusBarColor(0.75, 0.55, 0.08, 0.8)
+        local style = addon.Media:GetBarStyle()
+        bar.fill:SetStatusBarTexture(addon.Media:GetBarStyleTexture(addon.Media:GetBarStyle()))
+        if aura.type == "DEBUFF" then
+            local debuff = getDebuffColor(aura, style)
+            bar.fill:SetStatusBarColor(debuff[1], debuff[2], debuff[3], debuff[4])
+        else
+            bar.fill:SetStatusBarColor(style.buff[1], style.buff[2], style.buff[3], style.buff[4])
+        end
         bar.duration:SetText("")
         bar.fill:SetValue(1)
         return
     end
 
-    local r, g, b = addon.Compat:GetDebuffColor(aura.debuffType)
-    bar.fill:SetStatusBarTexture(addon.Media:GetBarTexture())
+    local style = addon.Media:GetBarStyle()
+    bar.fill:SetStatusBarTexture(addon.Media:GetBarStyleTexture(style))
     if aura.type == "DEBUFF" then
-        bar.fill:SetStatusBarColor(r, g, b, 0.75)
+        local debuff = getDebuffColor(aura, style)
+        bar.fill:SetStatusBarColor(debuff[1], debuff[2], debuff[3], debuff[4])
     else
-        bar.fill:SetStatusBarColor(0.2, 0.6, 1.0, 0.7)
+        bar.fill:SetStatusBarColor(style.buff[1], style.buff[2], style.buff[3], style.buff[4])
     end
 end
 
@@ -315,6 +464,37 @@ function Layout:ApplyBarFont(bar)
     end
 end
 
+function Layout:UpdateAuraName(bar)
+    if not bar.text or not bar.text:IsShown() then
+        return
+    end
+
+    local fullName = bar.text.fullName or ""
+    local style = addon.Media:GetBarStyle()
+    local iconInset = style.iconInset or 4
+    local leftWidth = iconInset + bar.icon:GetWidth() + iconInset + 2
+    local rightWidth = iconInset + 2 + bar.duration:GetStringWidth()
+    local availableWidth = math.max(20, bar:GetWidth() - leftWidth - rightWidth - 8)
+    bar.text:SetText(fullName)
+    if bar.text:GetStringWidth() <= availableWidth then
+        return
+    end
+
+    local characterCount = utf8Length(fullName)
+    local low = 0
+    local high = characterCount
+    while low < high do
+        local middle = math.ceil((low + high) / 2)
+        bar.text:SetText(utf8Prefix(fullName, middle) .. "...")
+        if bar.text:GetStringWidth() <= availableWidth then
+            low = middle
+        else
+            high = middle - 1
+        end
+    end
+    bar.text:SetText(utf8Prefix(fullName, low) .. "...")
+end
+
 function Layout:UpdateBarDuration(bar)
     local aura = bar.aura
     if not aura then
@@ -324,6 +504,7 @@ function Layout:UpdateBarDuration(bar)
     if not aura.duration or aura.duration <= 0 or not aura.expiresAt or aura.expiresAt <= 0 then
         bar.duration:SetText("")
         bar.fill:SetValue(1)
+        self:UpdateAuraName(bar)
         return
     end
 
@@ -331,11 +512,13 @@ function Layout:UpdateBarDuration(bar)
     if remaining <= 0 then
         bar.duration:SetText("")
         bar.fill:SetValue(0)
+        self:UpdateAuraName(bar)
         return
     end
 
     bar.duration:SetText(string.format("%.0f", remaining))
     bar.fill:SetValue(remaining / aura.duration)
+    self:UpdateAuraName(bar)
 end
 
 addon.Layout = Layout

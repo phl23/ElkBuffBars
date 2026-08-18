@@ -21,14 +21,14 @@ local function normalizeAura(rawAura, unitToken, auraIndex)
         source = rawAura.sourceUnit or rawAura.source or "",
         expiresAt = rawAura.expirationTime or 0,
         remaining = remaining,
-        debuffType = rawAura.debuffType or "none",
+        debuffType = rawAura.dispelName or rawAura.debuffType or "none",
         charges = rawAura.charges or 0,
         spellId = rawAura.spellId,
         index = auraIndex or rawAura.index,
         duration = rawAura.duration or 0,
         isHelpful = rawAura.isHelpful,
         isHarmful = rawAura.isHarmful,
-        canSteal = rawAura.canStealOrPurge,
+        canSteal = rawAura.isStealable or rawAura.canStealOrPurge,
     }
 end
 

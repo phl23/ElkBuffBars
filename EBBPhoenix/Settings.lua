@@ -9,6 +9,9 @@ addon.defaults = {
         },
         locked = false,
         barTexture = "You Are The Best!",
+        barStyle = "luna",
+        barSpacing = 4,
+        colorDebuffsByType = false,
         font = "Aldrich",
         fontShadow = true,
         hideBlizzardBuffs = false,
@@ -204,6 +207,11 @@ end
 
 function addon:SetBarsLocked(locked)
     self.db.profile.locked = locked == true
+    self:RefreshAll()
+end
+
+function addon:SetBarSpacing(value)
+    self.db.profile.barSpacing = math.max(0, math.min(20, value))
     self:RefreshAll()
 end
 
