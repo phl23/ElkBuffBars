@@ -19,12 +19,12 @@ local function createSettingsPanel()
 
     local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 16, -16)
-    title:SetText("EBB Phoenix")
+    title:SetText("Phoenix")
 
     local openButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     openButton:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -20)
     openButton:SetSize(200, 26)
-    openButton:SetText("Open EBB Phoenix")
+    openButton:SetText("Open Phoenix")
     openButton:SetScript("OnClick", function()
         addon.Options:Open()
     end)
@@ -137,7 +137,7 @@ local function buildPanel()
     panel:SetHeight(560)
     UISpecialFrames = UISpecialFrames or {}
     table.insert(UISpecialFrames, "EBBPhoenixOptionsPanel")
-    panel.name = "EBB Phoenix"
+    panel.name = "Phoenix"
     panel:SetFrameStrata("DIALOG")
     panel:Hide()
     panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
@@ -163,12 +163,12 @@ local function buildPanel()
 
     local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 16, -16)
-    title:SetText("EBB Phoenix")
+    title:SetText("Phoenix")
     title:SetTextColor(1, 0.82, 0.2)
 
     local subtitle = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-    subtitle:SetText("Modern buff and debuff bar groups")
+    subtitle:SetText("Modern aura bars inspired by EBB Heritage")
     subtitle:SetTextColor(unpack(colors.muted))
 
     local scrollFrame = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
@@ -694,7 +694,7 @@ function Options:RegisterSettingsCategory()
     end
 
     self.settingsPanel = createSettingsPanel()
-    local category = Settings.RegisterCanvasLayoutCategory(self.settingsPanel, "EBB Phoenix")
+    local category = Settings.RegisterCanvasLayoutCategory(self.settingsPanel, "Phoenix")
     category.ID = "EBBPhoenix"
     Settings.RegisterAddOnCategory(category)
     self.settingsRegistered = true
@@ -705,7 +705,7 @@ function addon:ToggleOptions()
         self.Options:Open()
     else
         if DEFAULT_CHAT_FRAME then
-            DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: options not available yet")
+            DEFAULT_CHAT_FRAME:AddMessage("Phoenix: options not available yet")
         end
     end
 end

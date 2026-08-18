@@ -41,11 +41,11 @@ function addon:RegisterSlashCommands()
             addon:PrintStatus()
         elseif command == "reset" then
             addon:ResetPositions()
-            DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: bar positions reset")
+            DEFAULT_CHAT_FRAME:AddMessage("Phoenix: bar positions reset")
         elseif addon.Options and addon.Options.Open then
             addon.Options:Open()
         else
-            DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: options not available yet")
+            DEFAULT_CHAT_FRAME:AddMessage("Phoenix: options not available yet")
         end
     end
 
@@ -128,7 +128,7 @@ function addon:Initialize()
         _G.SlashCmdList["EBB"] = _G.SlashCmdList["EBBPHOENIX"]
         _G.SLASH_EBB1 = "/ebb"
     elseif DEFAULT_CHAT_FRAME then
-        DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix: /ebb is already used; use /px or /phoenix")
+        DEFAULT_CHAT_FRAME:AddMessage("Phoenix: /ebb is already used; use /px or /phoenix")
     end
 
     self:BuildGroups()
@@ -250,7 +250,7 @@ function addon:CreateMinimapButton()
 end
 
 function addon:PrintStatus()
-    DEFAULT_CHAT_FRAME:AddMessage("EBB Phoenix " .. self.version .. " status")
+    DEFAULT_CHAT_FRAME:AddMessage("Phoenix " .. self.version .. " status")
     for _, groupConfig in ipairs(self.state.config.groups) do
         local group = self.state.groups[groupConfig.id]
         if group then

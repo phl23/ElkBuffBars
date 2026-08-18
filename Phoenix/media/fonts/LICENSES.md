@@ -1,6 +1,6 @@
 # Font sources
 
-The following bundled fonts are used in EBB Phoenix and are published
+The following bundled fonts are used in Phoenix and are published
 through Google Fonts under the SIL Open Font License 1.1:
 
 - Aldrich

@@ -1,7 +1,7 @@
 ## Interface: 11508, 11509, 40400, 110002, 110005, 20506
 
-## Title: EBB Phoenix
-## Notes: Modern rewrite of the classic ElkBuffBars buff-bar system.
+## Title: Phoenix
+## Notes: Modern aura bars built on EBB Heritage.
 ## Author: phl23 / AI
 ## Version: 3.0.0
 ## SavedVariables: EBBPhoenixDB
