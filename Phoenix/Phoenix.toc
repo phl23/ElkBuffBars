@@ -3,7 +3,7 @@
 ## Title: Phoenix
 ## Notes: Modern aura bars built on EBB Heritage.
 ## Author: phl23 / AI
-## Version: 3.0.0
+## Version: 3.0.7
 ## SavedVariables: EBBPhoenixDB
 ## Category: Buffs & Debuffs
 

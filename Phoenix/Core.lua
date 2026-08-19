@@ -3,7 +3,7 @@ local addonName, addon = ...
 _G[addonName] = addon
 
 addon.name = addonName
-addon.version = "3.0.0"
+addon.version = "3.0.7"
 addon.state = {
     groups = {},
     activeUnitData = {},
@@ -137,6 +137,9 @@ function addon:Initialize()
     self:ApplyBlizzardAuraVisibility()
     self.Options:RegisterSettingsCategory()
     self:RefreshAll()
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("Phoenix " .. self.version .. " loaded")
+    end
 end
 
 function addon:RegisterCoreEvents()

@@ -99,6 +99,7 @@ end
 function Layout:CreateBar(parent)
     local bar = table.remove(parent.barPool) or CreateFrame("Button", nil, parent.frame)
     bar.group = parent
+    bar:RegisterForClicks("LeftButtonUp")
     bar:SetSize(parent.width, parent.height)
     bar:SetFrameStrata("HIGH")
     bar:SetFrameLevel(parent.frame:GetFrameLevel() + 10)
@@ -199,6 +200,29 @@ function Layout:CreateBar(parent)
         end
     end)
 
+    if not bar.secureCancelButton then
+        local secureButton = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
+        secureButton:RegisterForClicks("LeftButtonDown", "RightButtonDown")
+        secureButton:SetPoint("TOPLEFT", bar, "TOPLEFT")
+        secureButton:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
+        secureButton:SetFrameStrata("HIGH")
+        secureButton:SetFrameLevel(bar:GetFrameLevel() + 1)
+        secureButton:Hide()
+        secureButton:SetScript("OnEnter", function()
+            local onEnter = bar:GetScript("OnEnter")
+            if onEnter then
+                onEnter(bar)
+            end
+        end)
+        secureButton:SetScript("OnLeave", function()
+            local onLeave = bar:GetScript("OnLeave")
+            if onLeave then
+                onLeave(bar)
+            end
+        end)
+        bar.secureCancelButton = secureButton
+    end
+
     return bar
 end
 
@@ -212,6 +236,14 @@ function Layout:RecycleBar(group, bar)
     bar.duration:SetText("")
     bar.icon:SetTexture("")
     bar.aura = nil
+    if not InCombatLockdown() then
+        local secureButton = bar.secureCancelButton
+        secureButton:SetAttribute("unit", nil)
+        secureButton:SetAttribute("*type2", nil)
+        secureButton:SetAttribute("*index2", nil)
+        secureButton:SetAttribute("*target-slot2", nil)
+        secureButton:Hide()
+    end
     table.insert(group.barPool, bar)
 end
 
@@ -399,6 +431,29 @@ end
 function Layout:ApplyAuraToBar(bar, aura)
     if not bar or not aura then
         return
+    end
+
+    if not InCombatLockdown() then
+        local secureButton = bar.secureCancelButton
+        if not aura.isDummy and aura.unit == "player" and aura.weaponSlot then
+            secureButton:SetAttribute("unit", "player")
+            secureButton:SetAttribute("*type2", "cancelaura")
+            secureButton:SetAttribute("*index2", nil)
+            secureButton:SetAttribute("*target-slot2", aura.weaponSlot)
+            secureButton:Show()
+        elseif not aura.isDummy and aura.unit == "player" and aura.isHelpful and aura.index then
+            secureButton:SetAttribute("unit", "player")
+            secureButton:SetAttribute("*type2", "cancelaura")
+            secureButton:SetAttribute("*index2", aura.index)
+            secureButton:SetAttribute("*target-slot2", nil)
+            secureButton:Show()
+        else
+            secureButton:SetAttribute("unit", nil)
+            secureButton:SetAttribute("*type2", nil)
+            secureButton:SetAttribute("*index2", nil)
+            secureButton:SetAttribute("*target-slot2", nil)
+            secureButton:Hide()
+        end
     end
 
     self:ApplyBarFont(bar)

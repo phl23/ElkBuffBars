@@ -153,6 +153,7 @@ function Compat:GetWeaponEnchants()
                 spellId = enchantId,
                 duration = duration,
                 isHelpful = true,
+                weaponSlot = slot.id,
             })
         end
     end
