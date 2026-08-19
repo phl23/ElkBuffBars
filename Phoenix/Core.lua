@@ -149,6 +149,9 @@ function addon:RegisterCoreEvents()
         "UNIT_TARGET",
         "GROUP_ROSTER_UPDATE",
         "UPDATE_SHAPESHIFT_FORM",
+        "UNIT_INVENTORY_CHANGED",
+        "WEAPON_ENCHANT_CHANGED",
+        "WEAPON_SLOT_CHANGED",
     }
 
     for _, event in ipairs(events) do
@@ -192,6 +195,20 @@ end
 
 function addon:UPDATE_SHAPESHIFT_FORM()
     self:RefreshAll()
+end
+
+function addon:UNIT_INVENTORY_CHANGED(unitToken)
+    if unitToken == "player" then
+        self:RefreshUnit("player")
+    end
+end
+
+function addon:WEAPON_ENCHANT_CHANGED()
+    self:RefreshUnit("player")
+end
+
+function addon:WEAPON_SLOT_CHANGED()
+    self:RefreshUnit("player")
 end
 
 function addon:RefreshAll()

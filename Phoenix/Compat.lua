@@ -67,6 +67,99 @@ function Compat:GetAuraDataByIndex(unitToken, index, filter)
     }
 end
 
+local weaponSlots = {
+    { id = 16, name = "Main Hand Enchant" },
+    { id = 17, name = "Off Hand Enchant" },
+}
+
+local weaponEnchantNames = {}
+local weaponTooltip
+
+local function extractEnchantName(text)
+    if type(text) ~= "string" then
+        return nil
+    end
+
+    local plainText = string.gsub(text, "|c%x%x%x%x%x%x%x%x", "")
+    plainText = string.gsub(plainText, "|r", "")
+    local name = string.match(plainText, "^(.+) %([^%)]*%d[^%)]*%)$")
+    if name then
+        return string.gsub(name, " %([^%)]*%)", "")
+    end
+    return nil
+end
+
+function Compat:GetWeaponEnchantName(slot, enchantId)
+    if enchantId and weaponEnchantNames[enchantId] then
+        return weaponEnchantNames[enchantId]
+    end
+
+    local name
+    if self.IsRetail and C_TooltipInfo and C_TooltipInfo.GetInventoryItem then
+        local tooltipData = C_TooltipInfo.GetInventoryItem("player", slot.id)
+        for _, line in ipairs(tooltipData and tooltipData.lines or {}) do
+            name = extractEnchantName(line.leftText)
+            if name then
+                break
+            end
+        end
+    else
+        if not weaponTooltip then
+            weaponTooltip = CreateFrame("GameTooltip", "PhoenixWeaponTooltipScanner", nil, "SharedTooltipTemplate")
+            weaponTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+        end
+
+        weaponTooltip:ClearLines()
+        weaponTooltip:SetInventoryItem("player", slot.id)
+        for _, region in ipairs({ weaponTooltip:GetRegions() }) do
+            if region:IsObjectType("FontString") then
+                name = extractEnchantName(region:GetText())
+                if name then
+                    break
+                end
+            end
+        end
+    end
+
+    if name and enchantId then
+        weaponEnchantNames[enchantId] = name
+    end
+    return name or slot.name
+end
+
+function Compat:GetWeaponEnchants()
+    local results = {}
+    if not GetWeaponEnchantInfo then
+        return results
+    end
+
+    local enchantData = { GetWeaponEnchantInfo() }
+    for index, slot in ipairs(weaponSlots) do
+        local offset = (index - 1) * 4
+        local hasEnchant = enchantData[offset + 1]
+        if hasEnchant then
+            local remainingMilliseconds = enchantData[offset + 2] or 0
+            local charges = enchantData[offset + 3] or 0
+            local enchantId = enchantData[offset + 4]
+            local duration = remainingMilliseconds / 1000
+            table.insert(results, {
+                name = self:GetWeaponEnchantName(slot, enchantId),
+                icon = GetInventoryItemTexture and GetInventoryItemTexture("player", slot.id) or "",
+                type = "WEAPON",
+                unit = "player",
+                expiresAt = GetTime() + duration,
+                remaining = duration,
+                charges = charges,
+                spellId = enchantId,
+                duration = duration,
+                isHelpful = true,
+            })
+        end
+    end
+
+    return results
+end
+
 function Compat:SafeFrameLookup(name)
     if not name then
         return nil

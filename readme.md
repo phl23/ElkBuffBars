@@ -24,7 +24,7 @@ The Phoenix entry in the Blizzard AddOns settings opens the same options window.
 
 ## Basic Setup
 
-Phoenix creates four groups by default: player buffs, player debuffs, target buffs, and target debuffs.
+Phoenix creates five groups by default: player buffs, player debuffs, target buffs, target debuffs, and player weapon enchants.
 
 1. Open `/px` and enable **Show preview bars**.
 2. Drag a preview bar to move its whole group.

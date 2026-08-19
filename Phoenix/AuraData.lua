@@ -70,6 +70,13 @@ function AuraData:CollectForGroup(group)
         return {}
     end
 
+    if group.filter == "WEAPON" then
+        if group.unit == "player" then
+            return Compat:GetWeaponEnchants()
+        end
+        return {}
+    end
+
     local filter = group.filter or "HELPFUL"
     local results = self:Collect(group.unit, filter)
 

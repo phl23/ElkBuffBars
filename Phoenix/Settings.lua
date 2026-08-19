@@ -83,6 +83,22 @@ addon.defaults = {
                 icon = true,
                 text = true,
             },
+            {
+                id = 5,
+                name = "Weapon Enchants",
+                unit = "player",
+                filter = "WEAPON",
+                width = 220,
+                height = 18,
+                anchor = { "TOPLEFT", nil, "TOPLEFT", 20, -560 },
+                grow = "DOWN",
+                enabled = true,
+                sort = "EXPIRATION",
+                onlyMine = false,
+                hidePermanent = false,
+                icon = true,
+                text = true,
+            },
         },
     },
 }
@@ -153,7 +169,7 @@ function addon:ApplyProfileDefaults()
         end
     end
 
-    self.db.profile.layoutVersion = 3
+    self.db.profile.layoutVersion = 4
 end
 
 function addon:LoadSavedVariables()

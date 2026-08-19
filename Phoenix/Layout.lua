@@ -319,6 +319,15 @@ local function getAuraPalette(style, aura)
         }
     end
 
+    if aura and aura.type == "WEAPON" then
+        return {
+            background = blendColor(style.background, { 0.28, 0.06, 0.48, 1 }, 0.72),
+            border = blendColor(style.border, { 0.7, 0.34, 1, 1 }, 0.76),
+            text = blendColor(style.text, { 0.92, 0.78, 1, 1 }, 0.48),
+            duration = blendColor(style.duration, { 0.82, 0.58, 1, 1 }, 0.64),
+        }
+    end
+
     return {
         background = blendColor(style.background, { 0.015, 0.1, 0.25, 1 }, 0.52),
         border = blendColor(style.border, { 0.14, 0.68, 1, 1 }, 0.58),
@@ -434,6 +443,8 @@ function Layout:ApplyAuraToBar(bar, aura)
     if aura.type == "DEBUFF" then
         local debuff = getDebuffColor(aura, style)
         bar.fill:SetStatusBarColor(debuff[1], debuff[2], debuff[3], debuff[4])
+    elseif aura.type == "WEAPON" then
+        bar.fill:SetStatusBarColor(0.58, 0.26, 0.9, style.buff[4])
     else
         bar.fill:SetStatusBarColor(style.buff[1], style.buff[2], style.buff[3], style.buff[4])
     end
@@ -490,6 +501,21 @@ function Layout:UpdateAuraName(bar)
     bar.text:SetText(utf8Prefix(fullName, low) .. "...")
 end
 
+local function formatRemainingTime(seconds)
+    local remaining = math.max(0, math.floor(seconds))
+    local minutes = math.floor(remaining / 60) % 60
+    local hours = math.floor(remaining / 3600)
+    local secondsPart = remaining % 60
+
+    if hours > 0 then
+        return string.format("%dh %dm", hours, minutes)
+    end
+    if minutes > 0 then
+        return string.format("%dm %ds", minutes, secondsPart)
+    end
+    return string.format("%ds", secondsPart)
+end
+
 function Layout:UpdateBarDuration(bar)
     local aura = bar.aura
     if not aura then
@@ -511,7 +537,7 @@ function Layout:UpdateBarDuration(bar)
         return
     end
 
-    bar.duration:SetText(string.format("%.0f", remaining))
+    bar.duration:SetText(formatRemainingTime(remaining))
     bar.fill:SetValue(remaining / aura.duration)
     self:UpdateAuraName(bar)
 end
