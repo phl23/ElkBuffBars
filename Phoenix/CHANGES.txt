@@ -1,0 +1,6 @@
+------------------------------------------------------------------------
+Phoenix 3.0.7
+
+- Added a chat confirmation when Phoenix loads.
+- Added secure right-click cancellation for player buffs.
+- Added secure right-click removal for main-hand and off-hand weapon imbues.
